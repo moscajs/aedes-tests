@@ -42,7 +42,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
         env:
-          DB: mongo
+          DB: mongodb
       - name: Install Deps
         run: npm install
       - name: Run tests

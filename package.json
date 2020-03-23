@@ -49,8 +49,10 @@
   "homepage": "https://github.com/moscajs/aedes-tests#readme",
   "devDependencies": {
     "aedes": "^0.40.1",
+    "aedes-persistence": "^8.1.1",
     "aedes-persistence-mongodb": "^8.0.0",
     "aedes-persistence-redis": "^7.0.0",
+    "mqemitter": "^4.1.2",
     "mqemitter-mongodb": "^7.0.0",
     "mqemitter-redis": "^4.0.1",
     "mqtt": "^3.0.0",

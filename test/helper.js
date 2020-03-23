@@ -9,6 +9,14 @@ const http = require('http')
 const https = require('https')
 const http2 = require('http2')
 const net = require('net')
+const aedes = require('aedes')
+
+const DB = process.env.DB
+var Persistence = 'aedes-persistence' + (DB ? '-' + DB : '')
+var MqEmitter = 'mqemitter' + (DB ? '-' + DB : '')
+
+Persistence = require(Persistence)
+MqEmitter = require(MqEmitter)
 
 function startClient (url, options) {
   if (typeof url === 'object') {
@@ -32,6 +40,12 @@ function startClient (url, options) {
       reject(err)
     })
   })
+}
+
+function initAedes (options) {
+  options.persistence = new Persistence()
+  options.mq = new MqEmitter()
+  return aedes(options)
 }
 
 function createServer (options, aedesHandler) {
@@ -70,6 +84,7 @@ function createServer (options, aedesHandler) {
 
 module.exports = {
   startClient: startClient,
+  initAedes: initAedes,
   createServer: createServer,
   delay: promisify(setTimeout)
 }
