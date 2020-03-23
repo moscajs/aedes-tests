@@ -19,6 +19,11 @@ function startClient (url, options) {
   return new Promise((resolve, reject) => {
     var client = mqtt.connect(url, options)
 
+    client.subscribe = promisify(client.subscribe)
+    client.unsubscribe = promisify(client.unsubscribe)
+    client.publish = promisify(client.publish)
+    client.end = promisify(client.end)
+
     client.once('connect', function () {
       resolve(client)
     })
@@ -27,10 +32,6 @@ function startClient (url, options) {
       reject(err)
     })
   })
-}
-
-function closeClient (client, force, options) {
-  return promisify(client.end)(force, options)
 }
 
 function createServer (options, aedesHandler) {
@@ -67,24 +68,8 @@ function createServer (options, aedesHandler) {
   return server
 }
 
-function subscribe (client, topic, options) {
-  return promisify(client.subscribe)(topic, options)
-}
-
-function unsubscribe (client, topic, options) {
-  return promisify(client.unsubscribe)(topic, options)
-}
-
-function publish (client, topic, message, options) {
-  return promisify(client.publish)(topic, message, options)
-}
-
 module.exports = {
   startClient: startClient,
-  closeClient: closeClient,
-  subscribe: subscribe,
-  unsubscribe: unsubscribe,
-  publish: publish,
   createServer: createServer,
   delay: promisify(setTimeout)
 }
