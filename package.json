@@ -13,9 +13,35 @@
     "url": "git+https://github.com/moscajs/aedes-tests.git"
   },
   "keywords": [
-    "aedes"
+    "aedes",
+    "mqtt",
+    "broker",
+    "nodejs",
+    "node",
+    "test"
   ],
-  "author": "robertsLando",
+  "engines": {
+    "node": ">=10"
+  },
+  "author": "Daniel Lando <daniel.sorridi@gmail.com>",
+  "contributors": [
+    {
+      "name": "Gavin D'mello",
+      "url": "https://github.com/GavinDmello"
+    },
+    {
+      "name": "Behrad Zari",
+      "url": "https://github.com/behrad"
+    },
+    {
+      "name": "Gnought",
+      "url": "https://github.com/gnought"
+    },
+    {
+      "name": "Daniel Lando",
+      "url": "https://github.com/robertsLando"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/moscajs/aedes-tests/issues"
