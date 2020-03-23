@@ -14,13 +14,13 @@ jobs:
         steps:
             - uses: actions/checkout@v2
             - name: Setup node
-            uses: actions/setup-node@v1
-            with:
-                node-version: ${{ matrix.node }}
-            env:
-                DB: redis      
-            - run: npm install
-            - run: npm test
+                uses: actions/setup-node@v1
+                with:
+                    node-version: ${{ matrix.node }}
+                env:
+                    DB: redis      
+                - run: npm install
+                - run: npm test
     mongo:
         build:
         runs-on: ubuntu-18.04
@@ -34,8 +34,8 @@ jobs:
             node: [ '13', '12', '10' ]
         name: Node ${{ matrix.node }} test
         steps:
-            - uses: actions/checkout@v2
-            - name: Setup node
+        - uses: actions/checkout@v2
+        - name: Setup node
             uses: actions/setup-node@v1
             with:
                 node-version: ${{ matrix.node }}
