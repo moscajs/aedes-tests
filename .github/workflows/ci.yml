@@ -36,14 +36,14 @@ jobs:
           - 27017:27017
     name: Node ${{ matrix.node }} test
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup node
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node }}
-      env:
-        DB: mongo
-    - name: Install Deps
-    - run: npm install
-    - name: Run tests
-    - run: npm test 
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+        env:
+          DB: mongo
+      - name: Install Deps
+      - run: npm install
+      - name: Run tests
+      - run: npm test 
