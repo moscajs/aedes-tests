@@ -2,7 +2,6 @@
 
 const { promisify } = require('util')
 const mqtt = require('mqtt')
-const assert = require('assert')
 const WebSocket = require('ws')
 const tls = require('tls')
 const http = require('http')
@@ -12,19 +11,21 @@ const net = require('net')
 const aedes = require('aedes')
 
 const DB = process.env.DB
-var Persistence = 'aedes-persistence' + (DB ? '-' + DB : '')
-var MqEmitter = 'mqemitter' + (DB ? '-' + DB : '')
+var persistence = 'aedes-persistence' + (DB ? '-' + DB : '')
+var mqemitter = 'mqemitter' + (DB ? '-' + DB : '')
 
-Persistence = require(Persistence)
-MqEmitter = require(MqEmitter)
+persistence = require(persistence)
+mqemitter = require(mqemitter)
 
 function startClient (url, options) {
-  if (typeof url === 'object') {
-    options = url
-    url = 'mqtt://localhost'
-  }
-
   return new Promise((resolve, reject) => {
+    if (typeof url === 'object') {
+      options = url
+      url = null
+    }
+
+    if (!url) url = 'mqtt://localhost'
+
     var client = mqtt.connect(url, options)
 
     client.subscribe = promisify(client.subscribe)
@@ -43,14 +44,35 @@ function startClient (url, options) {
 }
 
 function initAedes (options) {
-  options.persistence = new Persistence()
-  options.mq = new MqEmitter()
+  if (!options) options = {}
+  options.persistence = persistence()
+  options.mq = mqemitter()
   return aedes(options)
 }
 
+function closeAll (...args) {
+  var done = 0
+  var err = null
+
+  function onDone (e) {
+    done++
+    if (e) err = e
+
+    if (done === args.length) {
+      if (err) throw err
+    }
+  }
+
+  for (var i = 0; i < args.length; i++) {
+    args[i].close(onDone)
+  }
+}
+
 function createServer (options, aedesHandler) {
-  assert(options, 'Missing options')
-  assert(aedesHandler, 'Missing aedes handler')
+  if (typeof options === 'function') {
+    aedesHandler = options
+    options = {}
+  }
 
   var server = null
   if (options.serverFactory) {
@@ -79,12 +101,19 @@ function createServer (options, aedesHandler) {
   } else {
     server = net.createServer(options, aedesHandler)
   }
-  return server
+
+  return new Promise((resolve, reject) => {
+    server.listen(options.port || 1883, function (err) {
+      if (err) reject(err)
+      else resolve(server)
+    })
+  })
 }
 
 module.exports = {
   startClient: startClient,
   initAedes: initAedes,
   createServer: createServer,
+  closeAll: closeAll,
   delay: promisify(setTimeout)
 }
