@@ -16,6 +16,8 @@ test('Connect-Publish-Disconnect 1000 clients', async function (t) {
   }
 
   var clients = await Promise.all(connects)
-  await Promise.all(clients.map(c => c.publish('my/topic', 'I\'m client ' + c.id)))
+  await Promise.all(clients.map(c => c.publish('my/topic', 'I\'m client ' + c.options.clientId)))
   await Promise.all(clients.map(c => c.end()))
+
+  brokerProcess.kill()
 })

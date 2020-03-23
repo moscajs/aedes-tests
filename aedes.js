@@ -62,27 +62,26 @@ var broker = initAedes()
 
 createServers(broker.handle)
 
-broker.on('client', function (client) {
-  var cId = client ? client.id : null
-  console.log('Client Connected: \x1b[33m' + cId + '\x1b[0m')
-})
+// broker.on('client', function (client) {
+//   var cId = client ? client.id : null
+//   console.log('Client Connected: \x1b[33m' + cId + '\x1b[0m')
+// })
 
-// fired when a client disconnects
-broker.on('clientDisconnect', function (client) {
-  var cId = client ? client.id : null
-  console.log('Client Disconnected: \x1b[33m' + cId + '\x1b[0m')
-})
+// broker.on('clientDisconnect', function (client) {
+//   var cId = client ? client.id : null
+//   console.log('Client Disconnected: \x1b[33m' + cId + '\x1b[0m')
+// })
 
-broker.on('subscribe', function (subscriptions, client) {
-  console.log('MQTT client \x1b[32m' + (client ? client.id : client) +
-        '\x1b[0m subscribed to topics: ' + subscriptions.map(s => s.topic).join('\n'))
-})
+// broker.on('subscribe', function (subscriptions, client) {
+//   console.log('MQTT client \x1b[32m' + (client ? client.id : client) +
+//         '\x1b[0m subscribed to topics: ' + subscriptions.map(s => s.topic).join('\n'))
+// })
 
-broker.on('unsubscribe', function (subscriptions, client) {
-  console.log('MQTT client \x1b[32m' + (client ? client.id : client) +
-        '\x1b[0m unsubscribed to topics: ' + subscriptions.join('\n'))
-})
+// broker.on('unsubscribe', function (subscriptions, client) {
+//   console.log('MQTT client \x1b[32m' + (client ? client.id : client) +
+//         '\x1b[0m unsubscribed to topics: ' + subscriptions.join('\n'))
+// })
 
-broker.on('publish', async function (packet, client) {
-  console.log('Client \x1b[31m' + (client ? client.id : 'BROKER_' + broker.id) + '\x1b[0m has published', packet.payload.toString(), 'on', packet.topic)
-})
+// broker.on('publish', async function (packet, client) {
+//   console.log('Client \x1b[31m' + (client ? client.id : 'BROKER_' + broker.id) + '\x1b[0m has published', packet.payload.toString(), 'on', packet.topic)
+// })
