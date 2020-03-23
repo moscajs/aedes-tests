@@ -1,4 +1,6 @@
-const util = require('util')
+'use strict'
+
+const { promisify } = require('util')
 const mqtt = require('mqtt')
 const assert = require('assert')
 const WebSocket = require('ws')
@@ -28,9 +30,7 @@ function startClient (url, options) {
 }
 
 function closeClient (client, force, options) {
-  return new Promise((resolve) => {
-    client.end(force, options, resolve)
-  })
+  return promisify(client.end)(force, options)
 }
 
 function createServer (options, aedesHandler) {
@@ -68,30 +68,15 @@ function createServer (options, aedesHandler) {
 }
 
 function subscribe (client, topic, options) {
-  return new Promise((resolve, reject) => {
-    client.subscribe(topic, options, function (err) {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+  return promisify(client.subscribe)(topic, options)
 }
 
 function unsubscribe (client, topic, options) {
-  return new Promise((resolve, reject) => {
-    client.unsubscribe(topic, options, function (err) {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+  return promisify(client.unsubscribe)(topic, options)
 }
 
 function publish (client, topic, message, options) {
-  return new Promise((resolve, reject) => {
-    client.publish(topic, message, options, function (err) {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+  return promisify(client.publish)(topic, message, options)
 }
 
 module.exports = {
@@ -101,5 +86,5 @@ module.exports = {
   unsubscribe: unsubscribe,
   publish: publish,
   createServer: createServer,
-  delay: util.promisify(setTimeout)
+  delay: promisify(setTimeout)
 }
