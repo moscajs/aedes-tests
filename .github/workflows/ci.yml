@@ -21,9 +21,9 @@ jobs:
         env:
           DB: redis    
       - name: Install Deps
-      - run: npm install
+        run: npm install
       - name: Run tests
-      - run: npm test
+        run: npm test
   mongo:
     runs-on: ubuntu-18.04
     strategy:
@@ -44,6 +44,6 @@ jobs:
         env:
           DB: mongo
       - name: Install Deps
-      - run: npm install
+        run: npm install
       - name: Run tests
-      - run: npm test 
+        run: npm test 
