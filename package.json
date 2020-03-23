@@ -4,8 +4,9 @@
   "description": "Integration/Black Box tests for Aedes MQTT Broker",
   "main": "index.js",
   "scripts": {
-    "unit": "tap --no-esm -J test/*.js",
-    "test": "npm run unit"
+    "unit": "tap test/*.js",
+    "lint:standard": "standard --verbose | snazzy",
+    "test": "npm run lint:standard && npm run unit"
   },
   "repository": {
     "type": "git",
@@ -24,7 +25,10 @@
     "aedes": "^0.40.1",
     "aedes-persistence-mongodb": "^8.0.0",
     "aedes-persistence-redis": "^7.0.0",
+    "mqemitter-mongodb": "^7.0.0",
+    "mqemitter-redis": "^4.0.1",
     "mqtt": "^3.0.0",
+    "snazzy": "^8.0.0",
     "standard": "^14.3.3",
     "tap": "^14.10.7",
     "ws": "^7.2.3"
