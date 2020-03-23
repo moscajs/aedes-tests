@@ -1,2 +1,5 @@
 jobs-auto: true
 no-esm: true
+no-ts: true
+no-jsx: true
+no-flow: true
