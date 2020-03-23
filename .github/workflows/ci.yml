@@ -1,7 +1,7 @@
 on: [push, pull_request]
 
 jobs:
-  test:
+  redis:
     runs-on: ubuntu-latest
     strategy:
       matrix:
