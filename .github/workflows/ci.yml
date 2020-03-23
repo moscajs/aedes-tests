@@ -1,0 +1,45 @@
+jobs:
+    redis:
+        build:
+        runs-on: ubuntu-18.04
+        services:
+            redis:
+              image: redis
+              ports:
+                - 6379:6379
+        strategy:
+            matrix:
+            node: [ '13', '12', '10' ]
+        name: Node ${{ matrix.node }} test
+        steps:
+            - uses: actions/checkout@v2
+            - name: Setup node
+            uses: actions/setup-node@v1
+            with:
+                node-version: ${{ matrix.node }}
+            env:
+                DB: redis      
+            - run: npm install
+            - run: npm test
+    mongo:
+        build:
+        runs-on: ubuntu-18.04
+        services:
+            mongodb:
+                image: mongo:3.4.23
+                ports:
+                  - 27017:27017
+        strategy:
+            matrix:
+            node: [ '13', '12', '10' ]
+        name: Node ${{ matrix.node }} test
+        steps:
+            - uses: actions/checkout@v2
+            - name: Setup node
+            uses: actions/setup-node@v1
+            with:
+                node-version: ${{ matrix.node }}
+            env:
+                DB: mongo
+            - run: npm install
+            - run: npm test 
