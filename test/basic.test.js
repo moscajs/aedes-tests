@@ -80,13 +80,45 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  publisher.on('message', function (topic, message) {
+  publisher.on('message', async function (topic, message) {
     if (topic === 'my/topic') {
       t.pass('Subscription has been restored')
     }
+    await publisher.end()
   })
 
   await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
-  await helper.delay(100)
+
+  await helper.delay(200)
+})
+
+test('Client receives retained messages on connect', async function (t) {
+  t.plan(10)
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
+  var publisher = await helper.startClient()
+
+  const options = { qos: 1, retain: true }
+  var received = 0
+
+  for (let i = 0; i < 10; i++) {
+    await publisher.publish('test/retained/' + i, i.toString(), options)
+  }
+
   await publisher.end()
+
+  publisher = await helper.startClient()
+
+  await publisher.subscribe('test/retained/#')
+
+  publisher.on('message', async function (topic, message) {
+    t.pass('Retained message received')
+    if (++received === 10) {
+      await publisher.end()
+    }
+  })
+
+  await helper.delay(200)
 })
