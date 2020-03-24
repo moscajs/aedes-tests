@@ -58,8 +58,35 @@ test('Subscribed clients receive updates', async function (t) {
   var publisher = await helper.startClient()
 
   await publisher.publish(msg.topic, msg.payload, msg)
-  await helper.delay(2000)
+  await helper.delay(100)
 
   await Promise.all(subscribers.map(c => c.end()))
+  await publisher.end()
+})
+
+test('Connect clean=false', async function (t) {
+  t.plan(1)
+  t.tearDown(helper.closeBroker)
+
+  const options = { clientId: 'pippo', clean: false }
+
+  await helper.startBroker()
+
+  var publisher = await helper.startClient('mqtt', options)
+
+  await publisher.subscribe('my/topic')
+
+  await publisher.end(true)
+
+  publisher = await helper.startClient('mqtt', options)
+
+  publisher.on('message', function (topic, message) {
+    if (topic === 'my/topic') {
+      t.pass('Subscription has been restored')
+    }
+  })
+
+  await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
+  await helper.delay(100)
   await publisher.end()
 })
