@@ -24,6 +24,21 @@ const ports = {
 
 const args = process.argv.filter(arg => ports[arg])
 
+const sockets = new Set()
+
+function addSocket (socket) {
+  sockets.add(socket)
+  socket.on('close', () => {
+    sockets.delete(socket)
+  })
+}
+
+function destroySockets () {
+  for (const s of sockets.values()) {
+    s.destroy()
+  }
+}
+
 const options = {
   key: readFileSync('./server.key'),
   cert: readFileSync('./server.cert'),
@@ -32,6 +47,7 @@ const options = {
 
 function listen (server, proto) {
   return new Promise((resolve, reject) => {
+    server.on('connection', addSocket)
     server.listen(ports[proto], (err) => {
       if (err) reject(err)
       else {
@@ -79,12 +95,14 @@ async function createServers (aedesHandler) {
 var broker = aedes({
   persistence: persistence(),
   mq: mqemitter(),
-  concurrency: 1000
+  concurrency: 1000,
+  heartbeatInterval: 500
 })
 
 createServers(broker.handle)
 
 process.on('SIGTERM', async function () {
+  destroySockets()
   await Promise.all(servers.map(s => close(s)))
   process.send('KILLED')
   process.exit(0)
