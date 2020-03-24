@@ -4,7 +4,7 @@ const helper = require('./helper.js')
 const { test } = require('tap')
 
 test('Connect-Publish-Disconnect 1000 clients', async function (t) {
-  helper.startBroker()
+  helper.startBroker(['TCP'])
 
   const total = 1000
 

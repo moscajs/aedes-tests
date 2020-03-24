@@ -22,6 +22,11 @@ const ports = {
   TCP: 1883
 }
 
+// first 2 args are node bin and aedes file
+// args will contain an array of server protocols
+// to start
+const args = process.argv.slice(2)
+
 const options = {
   key: fs.readFileSync('./server.key'),
   cert: fs.readFileSync('./server.cert'),
@@ -50,7 +55,7 @@ function close (server) {
 }
 
 async function createServers (aedesHandler) {
-  var protos = process.args || ['TLS', 'WS', 'TCP']
+  var protos = args && args.length > 0 ? args : ['TLS', 'WS', 'TCP']
 
   for (let i = 0; i < protos.length; i++) {
     if (protos[i] === 'TLS') {
