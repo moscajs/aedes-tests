@@ -3,11 +3,9 @@
 const helper = require('./helper.js')
 const { test } = require('tap')
 
-const { fork } = require('child_process')
-
-const brokerProcess = fork('aedes.js')
-
 test('Connect-Publish-Disconnect 1000 clients', async function (t) {
+  helper.startBroker()
+
   const total = 1000
 
   const connects = []
@@ -19,5 +17,5 @@ test('Connect-Publish-Disconnect 1000 clients', async function (t) {
   await Promise.all(clients.map(c => c.publish('my/topic', 'I\'m client ' + c.options.clientId)))
   await Promise.all(clients.map(c => c.end()))
 
-  brokerProcess.kill()
+  t.tearDown(helper.closeBroker)
 })

@@ -2,6 +2,9 @@
 
 const { promisify } = require('util')
 const mqtt = require('mqtt')
+const { fork } = require('child_process')
+
+var brokerProcess
 
 function startClient (url, options) {
   return new Promise((resolve, reject) => {
@@ -29,7 +32,22 @@ function startClient (url, options) {
   })
 }
 
+function startBroker (args) {
+  if (brokerProcess && !brokerProcess.killed) throw Error('Another process is already running')
+
+  brokerProcess = fork('aedes.js', args)
+  return brokerProcess
+}
+
+function closeBroker () {
+  if (brokerProcess.killed) throw Error('Broker process has been already killed')
+
+  brokerProcess.kill('SIGTERM')
+}
+
 module.exports = {
   startClient: startClient,
+  startBroker: startBroker,
+  closeBroker: closeBroker,
   delay: promisify(setTimeout)
 }

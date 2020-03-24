@@ -14,53 +14,78 @@ var mqemitter = 'mqemitter' + (DB ? '-' + DB : '')
 persistence = require(persistence)
 mqemitter = require(mqemitter)
 
+const servers = []
+
+const ports = {
+  TLS: 8883,
+  WS: 4000,
+  TCP: 1883
+}
+
 const options = {
   key: fs.readFileSync('./server.key'),
   cert: fs.readFileSync('./server.cert'),
   rejectUnauthorized: false
 }
 
-function initAedes (options) {
-  if (!options) options = {}
-  options.persistence = persistence()
-  options.mq = mqemitter()
-  return aedes(options)
-}
-
-function listen (server, port, type) {
+function listen (server, proto) {
   return new Promise((resolve, reject) => {
-    server.listen(port, (err) => {
+    server.listen(ports[proto], (err) => {
       if (err) reject(err)
       else {
-        console.log(type, 'server is listening on port', port)
+        console.log(proto, 'server is listening on port', ports[proto])
         resolve()
       }
     })
   })
 }
 
-async function createServers (aedesHandler) {
-  var servers = []
-  var ports = [8883, 4000, 1883]
-  var types = ['TLS', 'WS', 'TCP']
-
-  servers.push(tls.createServer(options, aedesHandler))
-  servers.push(http.createServer())
-
-  const ws = new WebSocket.Server({ server: servers[1] })
-  ws.on('connection', function (conn, req) {
-    const stream = WebSocket.createWebSocketStream(conn)
-    aedesHandler(stream, req)
+function close (server) {
+  return new Promise((resolve, reject) => {
+    server.close(function (err) {
+      if (err) reject(err)
+      else resolve()
+    })
   })
-
-  servers.push(net.createServer(aedesHandler))
-
-  await Promise.all(servers.map((s, i) => listen(s, ports[i], types[i])))
 }
 
-var broker = initAedes()
+async function createServers (aedesHandler) {
+  var protos = process.args || ['TLS', 'WS', 'TCP']
+
+  for (let i = 0; i < protos.length; i++) {
+    if (protos[i] === 'TLS') {
+      servers.push(tls.createServer(options, aedesHandler))
+    } else if (protos[i] === 'WS') {
+      var server = http.createServer()
+      servers.push(server)
+      const ws = new WebSocket.Server({ server: server })
+      ws.on('connection', function (conn, req) {
+        const stream = WebSocket.createWebSocketStream(conn)
+        aedesHandler(stream, req)
+      })
+    } else if (protos[i] === 'TCP') {
+      servers.push(net.createServer(aedesHandler))
+    } else {
+      throw Error('Invalid protocol ' + protos[i])
+    }
+  }
+
+  await Promise.all(servers.map((s, i) => listen(s, protos[i])))
+}
+
+console.log('Setting up Aedes broker with', DB || 'in memory', 'persistence')
+
+var broker = aedes({
+  persistence: persistence(),
+  mq: mqemitter()
+})
 
 createServers(broker.handle)
+
+process.on('SIGTERM', async function () {
+  await Promise.all(servers.map(s => close(s)))
+  process.exit(0)
+})
 
 // broker.on('client', function (client) {
 //   var cId = client ? client.id : null
