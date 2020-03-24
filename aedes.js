@@ -38,7 +38,6 @@ function listen (server, proto) {
     server.listen(ports[proto], (err) => {
       if (err) reject(err)
       else {
-        console.log(proto, 'server is listening on port', ports[proto])
         resolve()
       }
     })
@@ -78,8 +77,6 @@ async function createServers (aedesHandler) {
   await Promise.all(servers.map((s, i) => listen(s, protos[i])))
 }
 
-console.log('Setting up Aedes broker with', DB || 'in memory', 'persistence')
-
 var broker = aedes({
   persistence: persistence(),
   mq: mqemitter(),
@@ -92,27 +89,3 @@ process.on('SIGTERM', async function () {
   await Promise.all(servers.map(s => close(s)))
   process.exit(0)
 })
-
-// broker.on('client', function (client) {
-//   var cId = client ? client.id : null
-//   console.log('Client Connected: \x1b[33m' + cId + '\x1b[0m')
-// })
-
-// broker.on('clientDisconnect', function (client) {
-//   var cId = client ? client.id : null
-//   console.log('Client Disconnected: \x1b[33m' + cId + '\x1b[0m')
-// })
-
-// broker.on('subscribe', function (subscriptions, client) {
-//   console.log('MQTT client \x1b[32m' + (client ? client.id : client) +
-//         '\x1b[0m subscribed to topics: ' + subscriptions.map(s => s.topic).join('\n'))
-// })
-
-// broker.on('unsubscribe', function (subscriptions, client) {
-//   console.log('MQTT client \x1b[32m' + (client ? client.id : client) +
-//         '\x1b[0m unsubscribed to topics: ' + subscriptions.join('\n'))
-// })
-
-// broker.on('publish', async function (packet, client) {
-//   console.log('Client \x1b[31m' + (client ? client.id : 'BROKER_' + broker.id) + '\x1b[0m has published', packet.payload.toString(), 'on', packet.topic)
-// })

@@ -4,7 +4,7 @@
   "description": "Integration/Black Box tests for Aedes MQTT Broker",
   "main": "index.js",
   "scripts": {
-    "unit": "tap test/*.js",
+    "unit": "tap test/*.test.js",
     "lint:standard": "standard --verbose | snazzy",
     "test": "npm run lint:standard && npm run unit"
   },
