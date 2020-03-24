@@ -156,6 +156,8 @@ test('Will message', async function (t) {
   })
 
   client.stream.destroy()
+
+  await helper.delay(200)
   await client.end()
   await client2.end()
 })
