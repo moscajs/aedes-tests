@@ -1,12 +1,14 @@
 # Aedes Tests
 
-Integration/Black Box tests for Aedes MQTT Broker. `aedes.js` will handle broker setup and is started in a separete process, based on args passed to the process it will init 3 different servers:
+![.github/workflows/ci.yml](https://github.com/moscajs/aedes-tests/workflows/.github/workflows/ci.yml/badge.svg)
+
+Integration/Black Box tests for [Aedes](https://github.com/moscajs/aedes) MQTT Broker. `aedes.js` handles broker setup and runs in a separete process, based on args passed to the process it can init 3 different servers:
 
 - __TLS__: On port _8883_
 - __WS__: On port _4000_
 - __TCP__: On port _1883_
 
-All tests are done against that broker that will always run in a separete process, each test will start and close a broker process.
+Each test will start and close a broker process and init MQTT clients using `helper.js` methods.
 
 `server.key` and `server.cert` have been generated using the command:
 
