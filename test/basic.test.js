@@ -22,3 +22,45 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
 
   t.tearDown(helper.closeBroker)
 })
+
+test('Subscribed clients receive updates', async function (t) {
+  t.plan(10, 'each client should receive a message')
+
+  await helper.startBroker()
+
+  var msg = {
+    topic: 'subscribers/topic',
+    payload: 'Hello world',
+    qos: 1,
+    retain: false
+  }
+
+  var subscribers = []
+  for (let i = 0; i < 10; i++) {
+    subscribers.push(helper.startClient())
+  }
+
+  subscribers = await Promise.all(subscribers)
+
+  function onMessage (topic, message) {
+    if (topic === msg.topic) {
+      t.pass('message received')
+    }
+  }
+
+  for (let i = 0; i < subscribers.length; i++) {
+    const client = subscribers[i]
+    await client.subscribe(msg.topic)
+    client.once('message', onMessage)
+  }
+
+  var publisher = await helper.startClient()
+
+  await publisher.publish(msg.topic, msg.payload, msg)
+  await helper.delay(2000)
+
+  await Promise.all(subscribers.map(c => c.end()))
+  await publisher.end()
+
+  t.tearDown(helper.closeBroker)
+})
