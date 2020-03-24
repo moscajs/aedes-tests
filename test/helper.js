@@ -3,19 +3,32 @@
 const { promisify } = require('util')
 const mqtt = require('mqtt')
 const { fork } = require('child_process')
+const { readFileSync } = require('fs')
 
 var brokerProcess
 
-function startClient (url, options) {
+const options = {
+  key: readFileSync('./server.key'),
+  cert: readFileSync('./server.cert'),
+  rejectUnauthorized: false
+}
+
+const protos = {
+  mqtts: 'mqtts://localhost:8883',
+  ws: 'ws://localhost:4000',
+  mqtt: 'mqtt://localhost:1883'
+}
+
+function startClient (proto) {
   return new Promise((resolve, reject) => {
-    if (typeof url === 'object') {
-      options = url
-      url = null
+    if (!proto) proto = 'MQTT'
+
+    if (!protos[proto]) {
+      reject(Error('Invalid protocol ' + proto + ' for MQTT client'))
+      return
     }
 
-    if (!url) url = 'mqtt://localhost'
-
-    var client = mqtt.connect(url, options)
+    var client = mqtt.connect(protos[proto], proto === 'mqtts' ? options : null)
 
     client.subscribe = promisify(client.subscribe)
     client.unsubscribe = promisify(client.unsubscribe)

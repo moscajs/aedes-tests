@@ -3,14 +3,16 @@
 const helper = require('./helper.js')
 const { test } = require('tap')
 
-test('Connect-Subscribe-Publish-Disconnect 1000 clients', async function (t) {
-  helper.startBroker(['TCP'])
+test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS protocols', async function (t) {
+  helper.startBroker()
 
-  const total = 1000
+  const total = 300
+
+  const protos = ['mqtts', 'ws', 'mqtt']
 
   const connects = []
   for (var i = 0; i < total; i++) {
-    connects.push(helper.startClient())
+    connects.push(helper.startClient(protos[i % 3]))
   }
 
   var clients = await Promise.all(connects)

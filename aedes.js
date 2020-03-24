@@ -5,7 +5,7 @@ const tls = require('tls')
 const http = require('http')
 const net = require('net')
 const aedes = require('aedes')
-const fs = require('fs')
+const { readFileSync } = require('fs')
 
 const DB = process.env.DB
 var persistence = 'aedes-persistence' + (DB ? '-' + DB : '')
@@ -28,8 +28,8 @@ const ports = {
 const args = process.argv.slice(2)
 
 const options = {
-  key: fs.readFileSync('./server.key'),
-  cert: fs.readFileSync('./server.cert'),
+  key: readFileSync('./server.key'),
+  cert: readFileSync('./server.cert'),
   rejectUnauthorized: false
 }
 
