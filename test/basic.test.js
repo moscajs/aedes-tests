@@ -4,6 +4,8 @@ const helper = require('./helper.js')
 const { test } = require('tap')
 
 test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS protocols', async function (t) {
+  t.tearDown(helper.closeBroker)
+
   await helper.startBroker()
 
   const total = 300
@@ -19,12 +21,11 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
   await Promise.all(clients.map(c => c.subscribe('my/topic')))
   await Promise.all(clients.map(c => c.publish('my/topic', 'I\'m client ' + c.options.clientId)))
   await Promise.all(clients.map(c => c.end()))
-
-  t.tearDown(helper.closeBroker)
 })
 
 test('Subscribed clients receive updates', async function (t) {
   t.plan(10, 'each client should receive a message')
+  t.tearDown(helper.closeBroker)
 
   await helper.startBroker()
 
@@ -61,6 +62,4 @@ test('Subscribed clients receive updates', async function (t) {
 
   await Promise.all(subscribers.map(c => c.end()))
   await publisher.end()
-
-  t.tearDown(helper.closeBroker)
 })
