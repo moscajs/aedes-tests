@@ -89,16 +89,16 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  publisher.on('message', async function (topic, message) {
+  publisher.on('message', function (topic, message) {
     if (topic === 'my/topic') {
       t.pass('Subscription has been restored')
     }
-    await publisher.end()
   })
 
   await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
 
   await helper.delay(200)
+  await publisher.end()
 })
 
 test('Client receives retained messages on connect', async function (t) {
@@ -110,7 +110,6 @@ test('Client receives retained messages on connect', async function (t) {
   var publisher = await helper.startClient()
 
   const options = { qos: 1, retain: true }
-  var received = 0
 
   for (let i = 0; i < 10; i++) {
     await publisher.publish('test/retained/' + i, i.toString(), options)
@@ -122,12 +121,38 @@ test('Client receives retained messages on connect', async function (t) {
 
   await publisher.subscribe('test/retained/#')
 
-  publisher.on('message', async function (topic, message) {
+  publisher.on('message', function (topic, message) {
     t.pass('Retained message received')
-    if (++received === 10) {
-      await publisher.end()
-    }
   })
 
   await helper.delay(200)
+  await publisher.end()
+})
+
+test('Will message', async function (t) {
+  t.plan(1)
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
+  var client = await helper.startClient('mqtt', {
+    will: {
+      topic: 'my/will',
+      payload: 'I\'m dead',
+      qos: 1,
+      retain: false
+    },
+    reconnectPeriod: 1000
+  })
+
+  await client.subscribe('my/will', { qos: 1 })
+
+  client.on('message', function (topic, message) {
+    t.pass('Will received')
+  })
+
+  await helper.closeBroker()
+  await helper.startBroker()
+
+  await helper.delay(2000)
 })
