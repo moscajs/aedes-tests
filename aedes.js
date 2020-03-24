@@ -82,7 +82,8 @@ console.log('Setting up Aedes broker with', DB || 'in memory', 'persistence')
 
 var broker = aedes({
   persistence: persistence(),
-  mq: mqemitter()
+  mq: mqemitter(),
+  concurrency: 1000
 })
 
 createServers(broker.handle)

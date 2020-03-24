@@ -3,7 +3,7 @@
 const helper = require('./helper.js')
 const { test } = require('tap')
 
-test('Connect-Publish-Disconnect 1000 clients', async function (t) {
+test('Connect-Subscribe-Publish-Disconnect 1000 clients', async function (t) {
   helper.startBroker(['TCP'])
 
   const total = 1000
@@ -14,6 +14,7 @@ test('Connect-Publish-Disconnect 1000 clients', async function (t) {
   }
 
   var clients = await Promise.all(connects)
+  await Promise.all(clients.map(c => c.subscribe('my/topic')))
   await Promise.all(clients.map(c => c.publish('my/topic', 'I\'m client ' + c.options.clientId)))
   await Promise.all(clients.map(c => c.end()))
 
