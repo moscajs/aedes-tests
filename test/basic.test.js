@@ -142,17 +142,20 @@ test('Will message', async function (t) {
       qos: 1,
       retain: false
     },
-    reconnectPeriod: 1000
+    reconnectPeriod: 100
   })
 
-  await client.subscribe('my/will', { qos: 1 })
+  var client2 = await helper.startClient()
 
-  client.on('message', function (topic, message) {
-    t.pass('Will received')
+  await client2.subscribe('my/will', { qos: 1 })
+
+  client2.on('message', function (topic, message) {
+    if (topic === 'my/will') {
+      t.pass('Will received')
+    }
   })
 
-  await helper.closeBroker()
-  await helper.startBroker()
-
-  await helper.delay(2000)
+  client.stream.destroy()
+  await client.end()
+  await client2.end()
 })
