@@ -7,7 +7,7 @@ const { readFileSync } = require('fs')
 
 var brokerProcess
 
-const options = {
+const credentials = {
   key: readFileSync('./server.key'),
   cert: readFileSync('./server.cert'),
   rejectUnauthorized: false
@@ -19,16 +19,22 @@ const protos = {
   mqtt: 'mqtt://localhost:1883'
 }
 
-function startClient (proto) {
+function startClient (proto, options) {
   return new Promise((resolve, reject) => {
-    if (!proto) proto = 'MQTT'
+    if (!proto) proto = 'mqtt'
 
     if (!protos[proto]) {
       reject(Error('Invalid protocol ' + proto + ' for MQTT client'))
       return
     }
 
-    var client = mqtt.connect(protos[proto], proto === 'mqtts' ? options : null)
+    options = options || {}
+
+    if (proto === 'mqtts') {
+      Object.assign(options, credentials)
+    }
+
+    var client = mqtt.connect(protos[proto], options)
 
     client.subscribe = promisify(client.subscribe)
     client.unsubscribe = promisify(client.unsubscribe)
@@ -46,16 +52,37 @@ function startClient (proto) {
 }
 
 function startBroker (args) {
-  if (brokerProcess && !brokerProcess.killed) throw Error('Another process is already running')
+  return new Promise((resolve, reject) => {
+    if (brokerProcess && !brokerProcess.killed) {
+      reject(Error('Another process is already running'))
+      return
+    }
 
-  brokerProcess = fork('aedes.js', args)
-  return brokerProcess
+    brokerProcess = fork('aedes.js', args)
+
+    brokerProcess.once('message', function (message) {
+      if (message === 'STARTED') {
+        resolve(brokerProcess)
+      }
+    })
+  })
 }
 
-function closeBroker () {
-  if (brokerProcess.killed) throw Error('Broker process has been already killed')
+function closeBroker (cb) {
+  return new Promise((resolve, reject) => {
+    if (brokerProcess.killed) {
+      reject(Error('Broker process has been already killed'))
+      return
+    }
 
-  brokerProcess.kill('SIGTERM')
+    brokerProcess.once('message', function (message) {
+      if (message === 'KILLED') {
+        resolve()
+      }
+    })
+
+    brokerProcess.kill('SIGTERM')
+  })
 }
 
 module.exports = {

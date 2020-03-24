@@ -22,10 +22,7 @@ const ports = {
   TCP: 1883
 }
 
-// first 2 args are node bin and aedes file
-// args will contain an array of server protocols
-// to start
-const args = process.argv.slice(2)
+const args = process.argv.filter(arg => ports[arg])
 
 const options = {
   key: readFileSync('./server.key'),
@@ -75,6 +72,8 @@ async function createServers (aedesHandler) {
   }
 
   await Promise.all(servers.map((s, i) => listen(s, protos[i])))
+
+  process.send('STARTED')
 }
 
 var broker = aedes({
@@ -87,5 +86,6 @@ createServers(broker.handle)
 
 process.on('SIGTERM', async function () {
   await Promise.all(servers.map(s => close(s)))
+  process.send('KILLED')
   process.exit(0)
 })

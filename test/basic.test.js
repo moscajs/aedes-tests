@@ -4,7 +4,7 @@ const helper = require('./helper.js')
 const { test } = require('tap')
 
 test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS protocols', async function (t) {
-  helper.startBroker()
+  await helper.startBroker()
 
   const total = 300
 
