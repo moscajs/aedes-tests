@@ -61,7 +61,7 @@ function startBroker (args) {
     brokerProcess = fork('aedes.js', args)
 
     brokerProcess.once('message', function (message) {
-      if (message === 'STARTED') {
+      if (message.state === 'ready') {
         resolve(brokerProcess)
       }
     })
@@ -76,11 +76,10 @@ function closeBroker (cb) {
     }
 
     brokerProcess.once('message', function (message) {
-      if (message === 'KILLED') {
+      if (message.state === 'killed') {
         resolve()
       }
     })
-
     brokerProcess.kill('SIGTERM')
   })
 }

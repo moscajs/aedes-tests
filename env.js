@@ -2,37 +2,36 @@ module.exports = {
   mongo: {
     mqemitter: {
       name: 'mqemitter-mongodb',
-      options: {},
-      clusters: true
+      options: {
+        url: 'mongodb://127.0.0.1/mqemitter'
+      }
     },
     persistence: {
       name: 'aedes-persistence-mongodb',
-      options: {},
-      clusters: true
-    }
+      options: {}
+    },
+    clusters: true
   },
   redis: {
     mqemitter: {
       name: 'mqemitter-redis',
-      options: {},
-      clusters: true
+      options: {}
     },
     persistence: {
       name: 'aedes-persistence-redis',
-      options: {},
-      clusters: true
-    }
+      options: {}
+    },
+    clusters: true
   },
   default: {
     mqemitter: {
       name: 'mqemitter',
-      options: {},
-      clusters: false
+      options: {}
     },
     persistence: {
       name: 'aedes-persistence',
-      options: {},
-      clusters: false
-    }
+      options: {}
+    },
+    clusters: false
   }
 }

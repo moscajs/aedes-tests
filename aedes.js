@@ -6,6 +6,7 @@ const http = require('http')
 const net = require('net')
 const aedes = require('aedes')
 const { readFileSync } = require('fs')
+const cluster = require('cluster')
 
 const env = require('./env')
 const DB = env[process.env.DB] || env.default
@@ -13,6 +14,8 @@ const persistence = require(DB.persistence.name)
 const mqemitter = require(DB.mqemitter.name)
 
 const servers = []
+
+process.send = process.send || function () { } // for testing
 
 const ports = {
   TLS: 8883,
@@ -57,11 +60,24 @@ function listen (server, proto) {
 
 function close (server) {
   return new Promise((resolve, reject) => {
-    server.close(function (err) {
-      if (err) reject(err)
-      else resolve()
-    })
+    if (server.listening) {
+      server.close(function (err) {
+        if (err) reject(err)
+        else resolve()
+      })
+    } else resolve()
   })
+}
+
+function init () {
+  var broker = aedes({
+    persistence: persistence(DB.persistence.options),
+    mq: mqemitter(DB.mqemitter.options),
+    concurrency: 1000,
+    heartbeatInterval: 500
+  })
+
+  createServers(broker.handle)
 }
 
 async function createServers (aedesHandler) {
@@ -87,21 +103,53 @@ async function createServers (aedesHandler) {
 
   await Promise.all(servers.map((s, i) => listen(s, protos[i])))
 
-  process.send('STARTED')
+  process.send({ state: 'ready' })
 }
 
-var broker = aedes({
-  persistence: persistence(DB.persistence.options),
-  mq: mqemitter(DB.mqemitter.options),
-  concurrency: 1000,
-  heartbeatInterval: 500
-})
-
-createServers(broker.handle)
-
 process.on('SIGTERM', async function () {
-  destroySockets()
-  await Promise.all(servers.map(s => close(s)))
-  process.send('KILLED')
-  process.exit(0)
+  if (!cluster.isWorker) {
+    for (const id in cluster.workers) {
+      cluster.workers[id].kill('SIGTERM')
+    }
+  } else {
+    destroySockets()
+    await Promise.all(servers.map(s => close(s)))
+    process.send({ state: 'killed' })
+    process.exit(0)
+  }
 })
+
+if (!cluster.isWorker) {
+  const numWorkers = require('os').cpus().length
+  for (let i = 0; i < numWorkers; i++) {
+    cluster.fork(process.env)
+  }
+
+  cluster.on('message', function (worker, message) {
+    if (message.state === 'ready') {
+      cluster.workers[worker.id].isReady = true
+
+      var allReady = true
+
+      for (const id in cluster.workers) {
+        if (!cluster.workers[id].isReady) {
+          allReady = false
+          break
+        }
+      }
+
+      if (allReady) {
+        process.send({ state: 'ready' })
+      }
+    }
+  })
+
+  cluster.on('exit', function (worker, code, signal) {
+    // console.log('Worker ' + worker.id + ' died with code: ' + code + ', and signal: ' + signal)
+    if (Object.keys(cluster.workers).length === 0) {
+      process.send({ state: 'killed' })
+    }
+  })
+} else {
+  init()
+}
