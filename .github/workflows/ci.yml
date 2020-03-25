@@ -17,13 +17,13 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v1
         with:
-          node-version: ${{ matrix.node }}
-        env:
-          DB: redis    
+          node-version: ${{ matrix.node }}    
       - name: Install Deps
         run: npm install
       - name: Run tests
         run: npm test
+        env:
+          DB: redis
   mongo:
     runs-on: ubuntu-18.04
     strategy:
@@ -41,9 +41,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node }}
-        env:
-          DB: mongo
       - name: Install Deps
         run: npm install
       - name: Run tests
         run: npm test 
+        env:
+          DB: mongo
