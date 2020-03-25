@@ -7,12 +7,10 @@ const net = require('net')
 const aedes = require('aedes')
 const { readFileSync } = require('fs')
 
-const DB = process.env.DB
-var persistence = 'aedes-persistence' + (DB ? '-' + DB : '')
-var mqemitter = 'mqemitter' + (DB ? '-' + DB : '')
-
-persistence = require(persistence)
-mqemitter = require(mqemitter)
+const env = require('./env')
+const DB = env[process.env.DB] || env.default
+const persistence = require(DB.persistence.name)
+const mqemitter = require(DB.mqemitter.name)
 
 const servers = []
 
@@ -93,8 +91,8 @@ async function createServers (aedesHandler) {
 }
 
 var broker = aedes({
-  persistence: persistence(),
-  mq: mqemitter(),
+  persistence: persistence(DB.persistence.options),
+  mq: mqemitter(DB.mqemitter.options),
   concurrency: 1000,
   heartbeatInterval: 500
 })
