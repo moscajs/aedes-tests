@@ -168,7 +168,7 @@ test('Wildecard subscriptions', async function (t) {
   await helper.startBroker()
 
   const options = {
-    qos: 0,
+    qos: 1,
     retain: false
   }
 
@@ -187,31 +187,23 @@ test('Wildecard subscriptions', async function (t) {
     }
   }
 
-  var publisher = await helper.startClient()
-  var subscriber = await helper.startClient()
+  var plan = 0
+  for (const sub in subscriptions) {
+    for (const pub in subscriptions[sub]) {
+      if (subscriptions[sub][pub]) plan++
+    }
+  }
 
-  function testReceive (sub, pub, result) {
-    return new Promise((resolve) => {
-      var timeout = null
+  t.plan(plan) // remember to change this when adding new sub/pub tests
 
-      subscriber.once('message', function (topic, message) {
-        if (timeout) {
-          clearTimeout(timeout)
-        }
+  function testReceive (subscriber, sub, pub, result) {
+    const passMessage = 'Publish to ' + pub + ' received by subscriber ' + sub
 
-        if (result && topic === pub) {
-          resolve(true)
-        } else {
-          resolve(false)
-        }
-      })
-
-      subscriber.subscribe(sub, options)
-        .then(() => publisher.publish(pub, 'Test wildecards', options))
-        .catch((e) => resolve(false))
-
-      if (!result) {
-        timeout = setTimeout(resolve(true), 200)
+    subscriber.once('message', function (topic, message) {
+      if (result && topic === pub) {
+        t.pass(passMessage)
+      } else {
+        t.error(passMessage)
       }
     })
   }
@@ -219,18 +211,16 @@ test('Wildecard subscriptions', async function (t) {
   for (const sub in subscriptions) {
     for (const pub in subscriptions[sub]) {
       const result = subscriptions[sub][pub]
-      const passMessage = 'Test publish to ' + pub + (result ? ' ' : ' not ') + 'received by subscriber ' + sub
-      var success = await testReceive(sub, pub, result)
-      await subscriber.unsubscribe(sub)
+      var publisher = await helper.startClient()
+      var subscriber = await helper.startClient()
+      await subscriber.subscribe(sub, options)
 
-      if (success) {
-        t.pass(passMessage)
-      } else {
-        t.error(passMessage)
-      }
+      testReceive(subscriber, sub, pub, result)
+
+      await publisher.publish(pub, 'Test wildecards', options)
+
+      await publisher.end()
+      await subscriber.end()
     }
   }
-
-  await publisher.end()
-  await subscriber.end()
 })
