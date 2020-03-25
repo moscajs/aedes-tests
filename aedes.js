@@ -27,14 +27,14 @@ const args = process.argv.filter(arg => ports[arg])
 
 const sockets = new Set()
 
-function addSocket (socket) {
+function addSocket(socket) {
   sockets.add(socket)
   socket.on('close', () => {
     sockets.delete(socket)
   })
 }
 
-function destroySockets () {
+function destroySockets() {
   for (const s of sockets.values()) {
     s.destroy()
   }
@@ -46,7 +46,7 @@ const options = {
   rejectUnauthorized: false
 }
 
-function listen (server, proto) {
+function listen(server, proto) {
   return new Promise((resolve, reject) => {
     server.on('connection', addSocket)
     server.listen(ports[proto], (err) => {
@@ -58,7 +58,7 @@ function listen (server, proto) {
   })
 }
 
-function close (server) {
+function close(server) {
   return new Promise((resolve, reject) => {
     if (server.listening) {
       server.close(function (err) {
@@ -69,7 +69,7 @@ function close (server) {
   })
 }
 
-function init () {
+function init() {
   var broker = aedes({
     persistence: persistence(DB.persistence.options),
     mq: mqemitter(DB.mqemitter.options),
@@ -80,7 +80,7 @@ function init () {
   createServers(broker.handle)
 }
 
-async function createServers (aedesHandler) {
+async function createServers(aedesHandler) {
   var protos = args && args.length > 0 ? args : ['TLS', 'WS', 'TCP']
 
   for (let i = 0; i < protos.length; i++) {
@@ -120,6 +120,8 @@ process.on('SIGTERM', async function () {
 })
 
 if (cluster.isMaster && DB.clusters) {
+  console.log('Setting up Aedes using', DB.persistence.name, 'and', DB.mqemitter.name, 'clusters:', DB.clusters ? 'Yes' : 'No')
+
   const numWorkers = require('os').cpus().length
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork(process.env)
