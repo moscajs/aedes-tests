@@ -66,7 +66,9 @@ function close (server) {
         if (err) reject(err)
         else resolve()
       })
-    } else resolve()
+    } else {
+      resolve()
+    }
   })
 }
 
@@ -115,14 +117,16 @@ process.on('SIGTERM', async function () {
   } else {
     destroySockets()
     await Promise.all(servers.map(s => close(s)))
-    process.send({ state: 'killed' })
-    process.exit(0)
+    if (cluster.isWorker) {
+      cluster.worker.kill()
+    } else {
+      process.send({ state: 'killed' })
+      process.exit(0)
+    }
   }
 })
 
 if (isMasterCluster) {
-  console.log('Setting up Aedes using', DB.persistence.name, 'and', DB.mqemitter.name, 'clusters:', DB.clusters ? 'Yes' : 'No')
-
   const numWorkers = require('os').cpus().length
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork(process.env)

@@ -28,7 +28,7 @@ async function testQos (t, qos) {
     topic: 'subscribers/topic',
     payload: 'Hello world',
     qos: qos,
-    retain: false
+    retain: true
   }
 
   var subscribers = []
@@ -96,7 +96,7 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  publisher.on('message', function (topic, message) {
+  publisher.once('message', function (topic, message) {
     if (topic === 'my/topic') {
       t.pass('Subscription has been restored')
     }
@@ -156,7 +156,7 @@ test('Will message', async function (t) {
 
   await client2.subscribe('my/will', { qos: 1 })
 
-  client2.on('message', function (topic, message) {
+  client2.once('message', function (topic, message) {
     if (topic === 'my/will') {
       t.pass('Will received')
     }
@@ -164,6 +164,7 @@ test('Will message', async function (t) {
 
   client.stream.destroy()
 
+  // wait for 3 * broker heartbeat
   await helper.delay(500)
   await client.end()
   await client2.end()
@@ -225,6 +226,7 @@ test('Wildecard subscriptions', async function (t) {
       testReceive(subscriber, sub, pub, result)
 
       await publisher.publish(pub, 'Test wildecards', options)
+      await helper.delay(500)
 
       await publisher.end()
       await subscriber.end()
