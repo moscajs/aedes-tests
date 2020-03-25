@@ -23,54 +23,61 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
   await Promise.all(clients.map(c => c.end()))
 })
 
+async function testQos (t, qos) {
+  var msg = {
+    topic: 'subscribers/topic',
+    payload: 'Hello world',
+    qos: qos,
+    retain: false
+  }
+
+  var subscribers = []
+  var received = 0
+
+  for (let i = 0; i < 10; i++) {
+    subscribers.push(helper.startClient())
+  }
+
+  subscribers = await Promise.all(subscribers)
+
+  function onMessage (topic, message) {
+    if (topic === msg.topic) {
+      if (received++ < 10 || qos === 2) {
+        t.pass('message received')
+      }
+    }
+  }
+
+  for (let i = 0; i < subscribers.length; i++) {
+    const client = subscribers[i]
+    await client.subscribe(msg.topic)
+    client.once('message', onMessage)
+  }
+
+  var publisher = await helper.startClient()
+
+  await publisher.publish(msg.topic, msg.payload, msg)
+  await helper.delay(100)
+
+  await Promise.all(subscribers.map(c => c.end()))
+  await publisher.end()
+}
+
 test('Subscribed clients receive updates - QoS 1', async function (t) {
-  t.plan(20, 'each client should receive a message')
+  t.plan(10, 'each client should receive a message')
   t.tearDown(helper.closeBroker)
 
   await helper.startBroker()
 
-  async function testQos (qos) {
-    var msg = {
-      topic: 'subscribers/topic',
-      payload: 'Hello world',
-      qos: qos,
-      retain: false
-    }
+  await testQos(t, 1)
+})
 
-    var subscribers = []
-    var received = 0
+test('Subscribed clients receive updates - QoS 2', async function (t) {
+  t.plan(10, 'each client should receive a message')
+  t.tearDown(helper.closeBroker)
 
-    for (let i = 0; i < 10; i++) {
-      subscribers.push(helper.startClient())
-    }
-
-    subscribers = await Promise.all(subscribers)
-
-    function onMessage (topic, message) {
-      if (topic === msg.topic) {
-        if (received++ < 10 || qos === 2) {
-          t.pass('message received')
-        }
-      }
-    }
-
-    for (let i = 0; i < subscribers.length; i++) {
-      const client = subscribers[i]
-      await client.subscribe(msg.topic)
-      client.once('message', onMessage)
-    }
-
-    var publisher = await helper.startClient()
-
-    await publisher.publish(msg.topic, msg.payload, msg)
-    await helper.delay(100)
-
-    await Promise.all(subscribers.map(c => c.end()))
-    await publisher.end()
-  }
-
-  await testQos(1)
-  await testQos(2)
+  await helper.startBroker()
+  await testQos(t, 2)
 })
 
 test('Connect clean=false', async function (t) {
