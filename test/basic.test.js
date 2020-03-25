@@ -161,3 +161,76 @@ test('Will message', async function (t) {
   await client.end()
   await client2.end()
 })
+
+test('Wildecard subscriptions', async function (t) {
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
+  const options = {
+    qos: 0,
+    retain: false
+  }
+
+  var subscriptions = {
+    'a/#': {
+      a: true,
+      'a/b': true,
+      'a/b/c': true,
+      'b/a/c': false
+    },
+    'a/+/+': {
+      'a/b/c': true,
+      'a/a/c': true,
+      'a/b/c/d': false,
+      'b/c/d': false
+    }
+  }
+
+  var publisher = await helper.startClient()
+  var subscriber = await helper.startClient()
+
+  function testReceive (sub, pub, result) {
+    return new Promise((resolve) => {
+      var timeout = null
+
+      subscriber.once('message', function (topic, message) {
+        if (timeout) {
+          clearTimeout(timeout)
+        }
+
+        if (result && topic === pub) {
+          resolve(true)
+        } else {
+          resolve(false)
+        }
+      })
+
+      subscriber.subscribe(sub, options)
+        .then(() => publisher.publish(pub, 'Test wildecards', options))
+        .catch((e) => resolve(false))
+
+      if (!result) {
+        timeout = setTimeout(resolve(true), 200)
+      }
+    })
+  }
+
+  for (const sub in subscriptions) {
+    for (const pub in subscriptions[sub]) {
+      const result = subscriptions[sub][pub]
+      const passMessage = 'Test publish to ' + pub + (result ? ' ' : ' not ') + 'received by subscriber ' + sub
+      var success = await testReceive(sub, pub, result)
+      await subscriber.unsubscribe(sub)
+
+      if (success) {
+        t.pass(passMessage)
+      } else {
+        t.error(passMessage)
+      }
+    }
+  }
+
+  await publisher.end()
+  await subscriber.end()
+})
