@@ -14,6 +14,7 @@ const persistence = require(DB.persistence.name)
 const mqemitter = require(DB.mqemitter.name)
 
 const servers = []
+const isMasterCluster = cluster.isMaster && DB.clusters
 
 process.send = process.send || function () { } // for testing
 
@@ -107,7 +108,7 @@ async function createServers (aedesHandler) {
 }
 
 process.on('SIGTERM', async function () {
-  if (cluster.isMaster && DB.clusters) {
+  if (isMasterCluster) {
     for (const id in cluster.workers) {
       cluster.workers[id].kill('SIGTERM')
     }
@@ -119,7 +120,7 @@ process.on('SIGTERM', async function () {
   }
 })
 
-if (cluster.isMaster && DB.clusters) {
+if (isMasterCluster) {
   console.log('Setting up Aedes using', DB.persistence.name, 'and', DB.mqemitter.name, 'clusters:', DB.clusters ? 'Yes' : 'No')
 
   const numWorkers = require('os').cpus().length
@@ -147,7 +148,6 @@ if (cluster.isMaster && DB.clusters) {
   })
 
   cluster.on('exit', function (worker, code, signal) {
-    // console.log('Worker ' + worker.id + ' died with code: ' + code + ', and signal: ' + signal)
     if (Object.keys(cluster.workers).length === 0) {
       process.send({ state: 'killed' })
     }

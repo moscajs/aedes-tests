@@ -57,7 +57,7 @@ async function testQos (t, qos) {
   var publisher = await helper.startClient()
 
   await publisher.publish(msg.topic, msg.payload, msg)
-  await helper.delay(100)
+  await helper.delay(500)
 
   await Promise.all(subscribers.map(c => c.end()))
   await publisher.end()
@@ -104,7 +104,7 @@ test('Connect clean=false', async function (t) {
 
   await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
 
-  await helper.delay(200)
+  await helper.delay(500)
   await publisher.end()
 })
 
@@ -132,7 +132,7 @@ test('Client receives retained messages on connect', async function (t) {
     t.pass('Retained message received')
   })
 
-  await helper.delay(200)
+  await helper.delay(500)
   await publisher.end()
 })
 
@@ -164,7 +164,7 @@ test('Will message', async function (t) {
 
   client.stream.destroy()
 
-  await helper.delay(200)
+  await helper.delay(500)
   await client.end()
   await client2.end()
 })
