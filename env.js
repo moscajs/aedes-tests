@@ -8,7 +8,9 @@ module.exports = {
     },
     persistence: {
       name: 'aedes-persistence-mongodb',
-      options: {}
+      options: {
+        url: 'mongodb://127.0.0.1/aedes'
+      }
     },
     clusters: true
   },

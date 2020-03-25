@@ -107,7 +107,7 @@ async function createServers (aedesHandler) {
 }
 
 process.on('SIGTERM', async function () {
-  if (!cluster.isWorker) {
+  if (cluster.isMaster && DB.clusters) {
     for (const id in cluster.workers) {
       cluster.workers[id].kill('SIGTERM')
     }
@@ -119,7 +119,7 @@ process.on('SIGTERM', async function () {
   }
 })
 
-if (!cluster.isWorker) {
+if (cluster.isMaster && DB.clusters) {
   const numWorkers = require('os').cpus().length
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork(process.env)
