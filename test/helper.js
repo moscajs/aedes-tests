@@ -68,9 +68,9 @@ function startBroker (args) {
   })
 }
 
-function receiveMessage (receiver) {
+function receiveMessage (receiver, wait) {
   return new Promise((resolve, reject) => {
-    var timeout = setTimeout(reject.bind(Error('Timeout')), 500)
+    var timeout = setTimeout(reject.bind(this, Error('Timeout')), wait || 500)
     receiver.once('message', function (topic, message) {
       clearTimeout(timeout)
       resolve({ topic, message })

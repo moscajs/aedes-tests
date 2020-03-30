@@ -157,7 +157,7 @@ test('Will message', async function (t) {
 
   client.stream.destroy()
 
-  var will = await helper.receiveMessage(client2)
+  var will = await helper.receiveMessage(client2, 2000)
 
   t.equal(will.topic, 'my/will', 'Will received')
 
