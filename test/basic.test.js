@@ -24,6 +24,11 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
 })
 
 async function testQos (t, qos) {
+  t.plan(10, 'each client should receive a message')
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
   var msg = {
     topic: 'subscribers/topic',
     payload: 'Hello world',
@@ -64,19 +69,10 @@ async function testQos (t, qos) {
 }
 
 test('Subscribed clients receive updates - QoS 1', async function (t) {
-  t.plan(10, 'each client should receive a message')
-  t.tearDown(helper.closeBroker)
-
-  await helper.startBroker()
-
   await testQos(t, 1)
 })
 
 test('Subscribed clients receive updates - QoS 2', async function (t) {
-  t.plan(10, 'each client should receive a message')
-  t.tearDown(helper.closeBroker)
-
-  await helper.startBroker()
   await testQos(t, 2)
 })
 
