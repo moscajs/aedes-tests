@@ -6,7 +6,9 @@
   "scripts": {
     "unit": "tap test/*.test.js",
     "lint:standard": "standard --verbose | snazzy",
-    "test": "npm run lint:standard && npm run unit"
+    "test": "npm run lint:standard && npm run unit",
+    "test-redis": "DB=redis npm run test",
+    "test-mongo": "DB=mongo npm run test"
   },
   "repository": {
     "type": "git",
@@ -60,5 +62,6 @@
     "standard": "^14.3.3",
     "tap": "^14.10.7",
     "ws": "^7.2.3"
-  }
+  },
+  "dependencies": {}
 }

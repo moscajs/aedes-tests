@@ -61,9 +61,19 @@ function startBroker (args) {
     brokerProcess = fork('aedes.js', args)
 
     brokerProcess.once('message', function (message) {
-      if (message === 'STARTED') {
+      if (message.state === 'ready') {
         resolve(brokerProcess)
       }
+    })
+  })
+}
+
+function receiveMessage (receiver) {
+  return new Promise((resolve, reject) => {
+    var timeout = setTimeout(reject.bind(Error('Timeout')), 500)
+    receiver.once('message', function (topic, message) {
+      clearTimeout(timeout)
+      resolve({ topic, message })
     })
   })
 }
@@ -76,11 +86,10 @@ function closeBroker (cb) {
     }
 
     brokerProcess.once('message', function (message) {
-      if (message === 'KILLED') {
+      if (message.state === 'killed') {
         resolve()
       }
     })
-
     brokerProcess.kill('SIGTERM')
   })
 }
@@ -89,5 +98,6 @@ module.exports = {
   startClient: startClient,
   startBroker: startBroker,
   closeBroker: closeBroker,
+  receiveMessage: receiveMessage,
   delay: promisify(setTimeout)
 }

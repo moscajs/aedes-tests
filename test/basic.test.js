@@ -23,7 +23,7 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
   await Promise.all(clients.map(c => c.end()))
 })
 
-test('Subscribed clients receive updates', async function (t) {
+async function testQos (t, qos) {
   t.plan(10, 'each client should receive a message')
   t.tearDown(helper.closeBroker)
 
@@ -32,11 +32,13 @@ test('Subscribed clients receive updates', async function (t) {
   var msg = {
     topic: 'subscribers/topic',
     payload: 'Hello world',
-    qos: 1,
-    retain: false
+    qos: qos,
+    retain: true
   }
 
   var subscribers = []
+  var received = 0
+
   for (let i = 0; i < 10; i++) {
     subscribers.push(helper.startClient())
   }
@@ -45,7 +47,9 @@ test('Subscribed clients receive updates', async function (t) {
 
   function onMessage (topic, message) {
     if (topic === msg.topic) {
-      t.pass('message received')
+      if (received++ < 10 || qos === 2) {
+        t.pass('message received')
+      }
     }
   }
 
@@ -58,8 +62,169 @@ test('Subscribed clients receive updates', async function (t) {
   var publisher = await helper.startClient()
 
   await publisher.publish(msg.topic, msg.payload, msg)
-  await helper.delay(2000)
+  await helper.delay(500)
 
   await Promise.all(subscribers.map(c => c.end()))
   await publisher.end()
+}
+
+test('Subscribed clients receive updates - QoS 1', async function (t) {
+  await testQos(t, 1)
+})
+
+test('Subscribed clients receive updates - QoS 2', async function (t) {
+  await testQos(t, 2)
+})
+
+test('Connect clean=false', async function (t) {
+  t.plan(1)
+  t.tearDown(helper.closeBroker)
+
+  const options = { clientId: 'pippo', clean: false }
+
+  await helper.startBroker()
+
+  var publisher = await helper.startClient('mqtt', options)
+
+  await publisher.subscribe('my/topic')
+
+  await publisher.end(true)
+
+  publisher = await helper.startClient('mqtt', options)
+
+  await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
+
+  var message = await helper.receiveMessage(publisher)
+
+  t.equal(message.topic, 'my/topic', 'Subscription has been restored')
+
+  await publisher.end()
+})
+
+test('Client receives retained messages on connect', async function (t) {
+  t.plan(10)
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
+  var publisher = await helper.startClient()
+
+  const options = { qos: 1, retain: true }
+
+  for (let i = 0; i < 10; i++) {
+    await publisher.publish('test/retained/' + i, i.toString(), options)
+  }
+
+  await publisher.end()
+
+  publisher = await helper.startClient()
+
+  await publisher.subscribe('test/retained/#')
+
+  function receiveRetained () {
+    return new Promise((resolve, reject) => {
+      var received = 0
+      publisher.on('message', function (topic, message) {
+        t.pass('Retained message received')
+        if (++received === 10) resolve()
+      })
+    })
+  }
+
+  await receiveRetained()
+  await publisher.end()
+})
+
+test('Will message', async function (t) {
+  t.plan(1)
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
+  var client = await helper.startClient('mqtt', {
+    will: {
+      topic: 'my/will',
+      payload: 'I\'m dead',
+      qos: 1,
+      retain: false
+    },
+    reconnectPeriod: 100
+  })
+
+  var client2 = await helper.startClient()
+
+  await client2.subscribe('my/will', { qos: 1 })
+
+  client.stream.destroy()
+
+  var will = await helper.receiveMessage(client2)
+
+  t.equal(will.topic, 'my/will', 'Will received')
+
+  await client.end()
+  await client2.end()
+})
+
+test('Wildecard subscriptions', async function (t) {
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+
+  const options = {
+    qos: 1,
+    retain: false
+  }
+
+  var subscriptions = {
+    'a/#': {
+      a: true,
+      'a/b': true,
+      'a/b/c': true,
+      'b/a/c': false
+    },
+    'a/+/+': {
+      'a/b/c': true,
+      'a/a/c': true,
+      'a/b/c/d': false,
+      'b/c/d': false
+    }
+  }
+
+  var plan = 0
+  for (const sub in subscriptions) {
+    for (const pub in subscriptions[sub]) {
+      if (subscriptions[sub][pub]) plan++
+    }
+  }
+
+  t.plan(plan) // remember to change this when adding new sub/pub tests
+
+  function testReceive (subscriber, sub, pub, result) {
+    const passMessage = 'Publish to ' + pub + ' received by subscriber ' + sub
+
+    subscriber.once('message', function (topic, message) {
+      if (result && topic === pub) {
+        t.pass(passMessage)
+      } else {
+        t.error(passMessage)
+      }
+    })
+  }
+
+  for (const sub in subscriptions) {
+    for (const pub in subscriptions[sub]) {
+      const result = subscriptions[sub][pub]
+      var publisher = await helper.startClient()
+      var subscriber = await helper.startClient()
+      await subscriber.subscribe(sub, options)
+
+      testReceive(subscriber, sub, pub, result)
+
+      await publisher.publish(pub, 'Test wildecards', options)
+      await helper.delay(500)
+
+      await publisher.end()
+      await subscriber.end()
+    }
+  }
 })
