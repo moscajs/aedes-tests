@@ -92,15 +92,12 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  publisher.once('message', function (topic, message) {
-    if (topic === 'my/topic') {
-      t.pass('Subscription has been restored')
-    }
-  })
-
   await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
 
-  await helper.delay(500)
+  var message = await helper.receiveMessage(publisher)
+
+  t.equal(message.topic, 'my/topic', 'Subscription has been restored')
+
   await publisher.end()
 })
 
@@ -124,11 +121,17 @@ test('Client receives retained messages on connect', async function (t) {
 
   await publisher.subscribe('test/retained/#')
 
-  publisher.on('message', function (topic, message) {
-    t.pass('Retained message received')
-  })
+  function receiveRetained () {
+    return new Promise((resolve, reject) => {
+      var received = 0
+      publisher.on('message', function (topic, message) {
+        t.pass('Retained message received')
+        if (++received === 10) resolve()
+      })
+    })
+  }
 
-  await helper.delay(500)
+  await receiveRetained()
   await publisher.end()
 })
 
@@ -152,16 +155,12 @@ test('Will message', async function (t) {
 
   await client2.subscribe('my/will', { qos: 1 })
 
-  client2.once('message', function (topic, message) {
-    if (topic === 'my/will') {
-      t.pass('Will received')
-    }
-  })
-
   client.stream.destroy()
 
-  // wait for 3 * broker heartbeat
-  await helper.delay(500)
+  var will = await helper.receiveMessage(client2)
+
+  t.equal(will.topic, 'my/will', 'Will received')
+
   await client.end()
   await client2.end()
 })

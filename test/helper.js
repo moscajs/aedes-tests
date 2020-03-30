@@ -68,6 +68,16 @@ function startBroker (args) {
   })
 }
 
+function receiveMessage (receiver) {
+  return new Promise((resolve, reject) => {
+    var timeout = setTimeout(reject.bind(Error('Timeout')), 500)
+    receiver.once('message', function (topic, message) {
+      clearTimeout(timeout)
+      resolve({ topic, message })
+    })
+  })
+}
+
 function closeBroker (cb) {
   return new Promise((resolve, reject) => {
     if (brokerProcess.killed) {
@@ -88,5 +98,6 @@ module.exports = {
   startClient: startClient,
   startBroker: startBroker,
   closeBroker: closeBroker,
+  receiveMessage: receiveMessage,
   delay: promisify(setTimeout)
 }
