@@ -192,24 +192,10 @@ test('Wildecard subscriptions', async function (t) {
 
   var plan = 0
   for (const sub in subscriptions) {
-    for (const pub in subscriptions[sub]) {
-      if (subscriptions[sub][pub]) plan++
-    }
+    plan += Object.keys(subscriptions[sub]).length
   }
 
-  t.plan(plan) // remember to change this when adding new sub/pub tests
-
-  function testReceive (subscriber, sub, pub, result) {
-    const passMessage = 'Publish to ' + pub + ' received by subscriber ' + sub
-
-    subscriber.once('message', function (topic, message) {
-      if (result && topic === pub) {
-        t.pass(passMessage)
-      } else {
-        t.error(passMessage)
-      }
-    })
-  }
+  t.plan(plan)
 
   for (const sub in subscriptions) {
     for (const pub in subscriptions[sub]) {
@@ -217,11 +203,16 @@ test('Wildecard subscriptions', async function (t) {
       var publisher = await helper.startClient()
       var subscriber = await helper.startClient()
       await subscriber.subscribe(sub, options)
-
-      testReceive(subscriber, sub, pub, result)
+      const passMessage = 'Publish to ' + pub + ' received by subscriber ' + sub
 
       await publisher.publish(pub, 'Test wildecards', options)
-      await helper.delay(500)
+
+      try {
+        var message = await helper.receiveMessage(subscriber, 1000)
+        t.equal(message.topic === pub && result, true, passMessage)
+      } catch (error) {
+        t.equal(error.message === 'Timeout' && !result, true, passMessage)
+      }
 
       await publisher.end()
       await subscriber.end()
