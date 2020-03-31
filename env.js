@@ -1,3 +1,5 @@
+'use strict'
+
 var clean = require('mongo-clean')
 var cleanopts = {
   action: 'deleteMany'
