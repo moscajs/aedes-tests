@@ -37,7 +37,6 @@ async function testQos (t, qos) {
   }
 
   var subscribers = []
-  var received = 0
 
   for (let i = 0; i < 10; i++) {
     subscribers.push(helper.startClient())
@@ -45,24 +44,18 @@ async function testQos (t, qos) {
 
   subscribers = await Promise.all(subscribers)
 
-  function onMessage (topic, message) {
-    if (topic === msg.topic) {
-      if (received++ < 10 || qos === 2) {
-        t.pass('message received')
-      }
-    }
-  }
-
-  for (let i = 0; i < subscribers.length; i++) {
-    const client = subscribers[i]
-    await client.subscribe(msg.topic)
-    client.once('message', onMessage)
-  }
+  // subscribe all subscribers
+  await Promise.all(subscribers.map(s => s.subscribe(msg.topic)))
 
   var publisher = await helper.startClient()
 
-  await publisher.publish(msg.topic, msg.payload, msg)
-  await helper.delay(500)
+  publisher._publish(msg.topic, msg.payload, msg)
+
+  var messages = await Promise.all(subscribers.map(s => helper.receiveMessage(s)))
+
+  for (const m of messages) {
+    t.equal(m.topic, msg.topic, 'Message received')
+  }
 
   await Promise.all(subscribers.map(c => c.end()))
   await publisher.end()
@@ -92,7 +85,7 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
+  publisher._publish('my/topic', 'I\'m alive', { qos: 1 })
 
   var message = await helper.receiveMessage(publisher)
 
@@ -157,7 +150,7 @@ test('Will message', async function (t) {
 
   client.stream.destroy()
 
-  var will = await helper.receiveMessage(client2, 2000)
+  var will = await helper.receiveMessage(client2)
 
   t.equal(will.topic, 'my/will', 'Will received')
 
@@ -185,6 +178,7 @@ test('Wildecard subscriptions', async function (t) {
     'a/+/+': {
       'a/b/c': true,
       'a/a/c': true,
+      'a//': true,
       'a/b/c/d': false,
       'b/c/d': false
     }
@@ -203,15 +197,15 @@ test('Wildecard subscriptions', async function (t) {
       var publisher = await helper.startClient()
       var subscriber = await helper.startClient()
       await subscriber.subscribe(sub, options)
-      const passMessage = 'Publish to ' + pub + ' received by subscriber ' + sub
+      const passMessage = 'Publish to ' + pub + (result ? '' : ' NOT') + ' received by subscriber ' + sub
 
-      await publisher.publish(pub, 'Test wildecards', options)
+      publisher._publish(pub, 'Test wildecards', options)
 
       try {
-        var message = await helper.receiveMessage(subscriber, 1000)
-        t.equal(message.topic === pub && result, true, passMessage)
+        var message = await helper.receiveMessage(subscriber, !result)
+        t.equal((result && message.topic === pub) || !result, true, passMessage)
       } catch (error) {
-        t.equal(error.message === 'Timeout' && !result, true, passMessage)
+        t.threw(error)
       }
 
       await publisher.end()

@@ -36,9 +36,16 @@ function startClient (proto, options) {
 
     var client = mqtt.connect(protos[proto], options)
 
+    client._subscribe = client.subscribe
     client.subscribe = promisify(client.subscribe)
+
+    client._unsubscribe = client.unsubscribe
     client.unsubscribe = promisify(client.unsubscribe)
+
+    client._publish = client.publish
     client.publish = promisify(client.publish)
+
+    client._end = client.end
     client.end = promisify(client.end)
 
     client.once('connect', function () {
@@ -68,13 +75,16 @@ function startBroker (args) {
   })
 }
 
-function receiveMessage (receiver, wait) {
+function receiveMessage (receiver, shouldNotReceive) {
   return new Promise((resolve, reject) => {
-    var timeout = setTimeout(reject.bind(this, Error('Timeout')), wait || 500)
     receiver.once('message', function (topic, message) {
-      clearTimeout(timeout)
       resolve({ topic, message })
     })
+
+    if (shouldNotReceive) {
+      receiver._subscribe('on/done')
+      receiver._publish('on/done', 'done', { qos: 1 })
+    }
   })
 }
 
