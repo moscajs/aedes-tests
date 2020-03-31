@@ -1,3 +1,8 @@
+var clean = require('mongo-clean')
+var cleanopts = {
+  action: 'deleteMany'
+}
+
 module.exports = {
   mongo: {
     mqemitter: {
@@ -12,7 +17,16 @@ module.exports = {
         url: 'mongodb://127.0.0.1/aedes'
       }
     },
-    clusters: true
+    clusters: true,
+    waitForReady: true,
+    cleanDb: function (persistence, cb) {
+      clean(persistence._db, cleanopts, function (err, db) {
+        if (err) {
+          throw err
+        }
+        cb()
+      })
+    }
   },
   redis: {
     mqemitter: {
@@ -23,7 +37,8 @@ module.exports = {
       name: 'aedes-persistence-redis',
       options: {}
     },
-    clusters: true
+    clusters: true,
+    waitForReady: true
   },
   default: {
     mqemitter: {
@@ -34,6 +49,7 @@ module.exports = {
       name: 'aedes-persistence',
       options: {}
     },
-    clusters: false
+    clusters: false,
+    waitForReady: false
   }
 }
