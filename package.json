@@ -58,7 +58,7 @@
     "aedes-persistence-redis": "^7.0.0",
     "mqemitter": "^4.1.2",
     "mqemitter-mongodb": "^7.0.0",
-    "mqemitter-redis": "^4.0.1",
+    "mqemitter-redis": "^4.0.2",
     "mqtt": "^3.0.0",
     "snazzy": "^8.0.0",
     "standard": "^14.3.3",
