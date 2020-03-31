@@ -8,7 +8,7 @@ module.exports = {
     mqemitter: {
       name: 'mqemitter-mongodb',
       options: {
-        url: 'mongodb://127.0.0.1/mqemitter'
+        url: 'mongodb://127.0.0.1/aedes'
       }
     },
     persistence: {
@@ -38,7 +38,10 @@ module.exports = {
       options: {}
     },
     clusters: true,
-    waitForReady: true
+    waitForReady: true,
+    cleanDb: function (persistence, cb) {
+      persistence._db.flushall(cb)
+    }
   },
   default: {
     mqemitter: {
