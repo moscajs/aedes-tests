@@ -2,6 +2,11 @@
 
 const helper = require('./helper.js')
 const { test } = require('tap')
+const pMap = require('p-map')
+
+const pMapOptions = {
+  concurrency: 4
+}
 
 test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS protocols', async function (t) {
   t.tearDown(helper.closeBroker)
@@ -18,9 +23,9 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
   }
 
   var clients = await Promise.all(connects)
-  await Promise.all(clients.map(c => c.subscribe('my/topic')))
-  await Promise.all(clients.map(c => c.publish('my/topic', 'I\'m client ' + c.options.clientId)))
-  await Promise.all(clients.map(c => c.end()))
+  await pMap(clients, c => c.subscribe('my/topic'), pMapOptions)
+  await pMap(clients, c => c.publish('my/topic', 'I\'m client ' + c.options.clientId), pMapOptions)
+  await pMap(clients, c => c.end(), pMapOptions)
 })
 
 async function testQos (t, qos) {
@@ -45,19 +50,19 @@ async function testQos (t, qos) {
   subscribers = await Promise.all(subscribers)
 
   // subscribe all subscribers
-  await Promise.all(subscribers.map(s => s.subscribe(msg.topic)))
+  await pMap(subscribers, s => s.subscribe(msg.topic), pMapOptions)
 
   var publisher = await helper.startClient()
 
   publisher._publish(msg.topic, msg.payload, msg)
 
-  var messages = await Promise.all(subscribers.map(s => helper.receiveMessage(s)))
+  var messages = await pMap(subscribers, s => helper.receiveMessage(s), pMapOptions)
 
   for (const m of messages) {
     t.equal(m.topic, msg.topic, 'Message received')
   }
 
-  await Promise.all(subscribers.map(c => c.end()))
+  await pMap(subscribers, c => c.end(), pMapOptions)
   await publisher.end()
 }
 
