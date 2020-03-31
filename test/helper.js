@@ -1,7 +1,7 @@
 'use strict'
 
 const { promisify } = require('util')
-const mqtt = require('mqtt')
+const mqtt = require('async-mqtt')
 const { fork } = require('child_process')
 const { readFileSync } = require('fs')
 
@@ -19,43 +19,20 @@ const protos = {
   mqtt: 'mqtt://localhost:1883'
 }
 
-function startClient (proto, options) {
-  return new Promise((resolve, reject) => {
-    if (!proto) proto = 'mqtt'
+async function startClient (proto, options) {
+  if (!proto) proto = 'mqtt'
 
-    if (!protos[proto]) {
-      reject(Error('Invalid protocol ' + proto + ' for MQTT client'))
-      return
-    }
+  if (!protos[proto]) {
+    throw Error('Invalid protocol ' + proto + ' for MQTT client')
+  }
 
-    options = options || {}
+  options = options || {}
 
-    if (proto === 'mqtts') {
-      Object.assign(options, credentials)
-    }
+  if (proto === 'mqtts') {
+    Object.assign(options, credentials)
+  }
 
-    var client = mqtt.connect(protos[proto], options)
-
-    client._subscribe = client.subscribe
-    client.subscribe = promisify(client.subscribe)
-
-    client._unsubscribe = client.unsubscribe
-    client.unsubscribe = promisify(client.unsubscribe)
-
-    client._publish = client.publish
-    client.publish = promisify(client.publish)
-
-    client._end = client.end
-    client.end = promisify(client.end)
-
-    client.once('connect', function () {
-      resolve(client)
-    })
-
-    client.once('error', function (err) {
-      reject(err)
-    })
-  })
+  return mqtt.connectAsync(protos[proto], options)
 }
 
 function startBroker (args) {
@@ -75,15 +52,19 @@ function startBroker (args) {
   })
 }
 
-function receiveMessage (receiver, shouldNotReceive) {
+function onError (err) {
+  if (err) { this.threw(err) }
+}
+
+function receiveMessage (receiver, t, shouldNotReceive) {
   return new Promise((resolve, reject) => {
     receiver.once('message', function (topic, message) {
       resolve({ topic, message })
     })
 
     if (shouldNotReceive) {
-      receiver._subscribe('on/done')
-      receiver._publish('on/done', 'done', { qos: 1 })
+      receiver._client.subscribe('on/done', onError.bind(t))
+      receiver._client.publish('on/done', 'done', { qos: 1 }, onError.bind(t))
     }
   })
 }
@@ -109,5 +90,6 @@ module.exports = {
   startBroker: startBroker,
   closeBroker: closeBroker,
   receiveMessage: receiveMessage,
+  onError: onError,
   delay: promisify(setTimeout)
 }

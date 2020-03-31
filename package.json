@@ -59,13 +59,13 @@
     "mqemitter": "^4.1.2",
     "mqemitter-mongodb": "^7.0.0",
     "mqemitter-redis": "^4.0.2",
-    "mqtt": "^3.0.0",
     "snazzy": "^8.0.0",
     "standard": "^14.3.3",
     "tap": "^14.10.7",
     "ws": "^7.2.3"
   },
   "dependencies": {
+    "async-mqtt": "^2.5.0",
     "mongo-clean": "^2.0.0",
     "p-map": "^4.0.0"
   }

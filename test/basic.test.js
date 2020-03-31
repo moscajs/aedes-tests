@@ -24,7 +24,7 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
 
   var clients = await Promise.all(connects)
   await pMap(clients, c => c.subscribe('my/topic'), pMapOptions)
-  await pMap(clients, c => c.publish('my/topic', 'I\'m client ' + c.options.clientId), pMapOptions)
+  await pMap(clients, c => c.publish('my/topic', 'I\'m client ' + c._client.options.clientId), pMapOptions)
   await pMap(clients, c => c.end(), pMapOptions)
 })
 
@@ -54,9 +54,9 @@ async function testQos (t, qos) {
 
   var publisher = await helper.startClient()
 
-  publisher._publish(msg.topic, msg.payload, msg)
+  publisher._client.publish(msg.topic, msg.payload, msg, helper.onError.bind(t))
 
-  var messages = await pMap(subscribers, s => helper.receiveMessage(s), pMapOptions)
+  var messages = await pMap(subscribers, s => helper.receiveMessage(s, t), pMapOptions)
 
   for (const m of messages) {
     t.equal(m.topic, msg.topic, 'Message received')
@@ -90,9 +90,9 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  publisher._publish('my/topic', 'I\'m alive', { qos: 1 })
+  publisher._client.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.onError.bind(t))
 
-  var message = await helper.receiveMessage(publisher)
+  var message = await helper.receiveMessage(publisher, t)
 
   t.equal(message.topic, 'my/topic', 'Subscription has been restored')
 
@@ -153,9 +153,9 @@ test('Will message', async function (t) {
 
   await client2.subscribe('my/will', { qos: 1 })
 
-  client.stream.destroy()
+  client._client.stream.destroy()
 
-  var will = await helper.receiveMessage(client2)
+  var will = await helper.receiveMessage(client2, t)
 
   t.equal(will.topic, 'my/will', 'Will received')
 
@@ -204,10 +204,10 @@ test('Wildecard subscriptions', async function (t) {
       await subscriber.subscribe(sub, options)
       const passMessage = 'Publish to ' + pub + (result ? '' : ' NOT') + ' received by subscriber ' + sub
 
-      publisher._publish(pub, 'Test wildecards', options)
+      publisher._client.publish(pub, 'Test wildecards', options, helper.onError.bind(t))
 
       try {
-        var message = await helper.receiveMessage(subscriber, !result)
+        var message = await helper.receiveMessage(subscriber, t, !result)
         t.equal((result && message.topic === pub) || !result, true, passMessage)
       } catch (error) {
         t.threw(error)
