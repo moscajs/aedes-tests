@@ -10,11 +10,13 @@ const cluster = require('cluster')
 
 const env = require('./env')
 const DB = env[process.env.DB] || env.default
+const noCluster = process.env.NO_CLUSTERS === 'true'
+
 const persistence = require(DB.persistence.name)
 const mqemitter = require(DB.mqemitter.name)
 
 const servers = []
-const isMasterCluster = cluster.isMaster && DB.clusters
+const isMasterCluster = cluster.isMaster && DB.clusters && !noCluster
 
 process.send = process.send || function () { } // for testing
 

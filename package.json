@@ -8,7 +8,9 @@
     "lint:standard": "standard --verbose | snazzy",
     "test": "npm run lint:standard && npm run unit",
     "test-redis": "DB=redis npm run test",
-    "test-mongo": "DB=mongo npm run test"
+    "test-mongo": "DB=mongo npm run test",
+    "test-redis-nc": "NO_CLUSTERS=true DB=redis npm run test",
+    "test-mongo-nc": "NO_CLUSTERS=true DB=mongo npm run test"
   },
   "repository": {
     "type": "git",
