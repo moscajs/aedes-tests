@@ -109,8 +109,14 @@ test('Client receives retained messages on connect', async function (t) {
 
   const options = { qos: 1, retain: true }
 
-  for (let i = 0; i < 10; i++) {
-    await publisher.publish('test/retained/' + i, i.toString(), options)
+  var levels = ['retained', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
+
+  // also test a wrong retain
+  await publisher.publish('test/retainedd', 'Test 0', options)
+  await publisher.publish('no/retained', 'Test 2', options)
+
+  for (let i = 0; i < levels.length; i++) {
+    await publisher.publish('test/' + levels.slice(0, i + 1).join('/'), 'Test' + i.toString(), options)
   }
 
   await publisher.end()
@@ -123,7 +129,7 @@ test('Client receives retained messages on connect', async function (t) {
     return new Promise((resolve, reject) => {
       var received = 0
       publisher.on('message', function (topic, message) {
-        t.pass('Retained message received')
+        t.pass('Retained message ' + topic + ' received from sub test/retained/#')
         if (++received === 10) resolve()
       })
     })
