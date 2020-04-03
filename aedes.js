@@ -84,7 +84,13 @@ function init () {
 
   if (DB.waitForReady) {
     broker.persistence.once('ready', function () {
-      DB.cleanDb(broker.persistence, createServers.bind(this, broker.handle))
+      DB.cleanDb(broker.persistence, function (err) {
+        if (err) {
+          throw err
+        } else {
+          createServers(broker.handle)
+        }
+      })
     })
   } else {
     createServers(broker.handle)

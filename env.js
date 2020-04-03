@@ -24,7 +24,7 @@ module.exports = {
     cleanDb: function (persistence, cb) {
       clean(persistence._db, cleanopts, function (err, db) {
         if (err) {
-          throw err
+          cb(err)
         }
         cb()
       })
