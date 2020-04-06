@@ -74,7 +74,7 @@ function close (server) {
   })
 }
 
-function init () {
+function init (cb) {
   var broker = aedes({
     persistence: persistence(DB.persistence.options),
     mq: mqemitter(DB.mqemitter.options),
@@ -86,14 +86,14 @@ function init () {
     broker.persistence.once('ready', function () {
       DB.cleanDb(broker.persistence, function (err) {
         if (err) {
-          throw err
+          cb(err)
         } else {
-          createServers(broker.handle)
+          createServers(broker.handle).then(cb).catch(cb)
         }
       })
     })
   } else {
-    createServers(broker.handle)
+    createServers(broker.handle).then(cb).catch(cb)
   }
 }
 
@@ -171,5 +171,8 @@ if (isMasterCluster) {
     }
   })
 } else {
-  init()
+  init(function (err) {
+    console.error(err)
+    process.exit(1)
+  })
 }
