@@ -14,4 +14,4 @@ Each test will start and close a broker process and init MQTT clients using `hel
 
 `openssl req -nodes -new -x509 -keyout server.key -out server.cert`
 
-This files are used by aedes to init a TLS server and from MQTT clients to connect to it
+This files are used by aedes to init a TLS server and by MQTT clients to connect to it
