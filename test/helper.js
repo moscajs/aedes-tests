@@ -1,7 +1,7 @@
 'use strict'
 
 const { promisify } = require('util')
-const mqtt = require('mqtt')
+const mqtt = require('async-mqtt')
 const { fork } = require('child_process')
 const { readFileSync } = require('fs')
 
@@ -19,36 +19,20 @@ const protos = {
   mqtt: 'mqtt://localhost:1883'
 }
 
-function startClient (proto, options) {
-  return new Promise((resolve, reject) => {
-    if (!proto) proto = 'mqtt'
+async function startClient (proto, options) {
+  if (!proto) proto = 'mqtt'
 
-    if (!protos[proto]) {
-      reject(Error('Invalid protocol ' + proto + ' for MQTT client'))
-      return
-    }
+  if (!protos[proto]) {
+    throw Error('Invalid protocol ' + proto + ' for MQTT client')
+  }
 
-    options = options || {}
+  options = options || {}
 
-    if (proto === 'mqtts') {
-      Object.assign(options, credentials)
-    }
+  if (proto === 'mqtts') {
+    Object.assign(options, credentials)
+  }
 
-    var client = mqtt.connect(protos[proto], options)
-
-    client.subscribe = promisify(client.subscribe)
-    client.unsubscribe = promisify(client.unsubscribe)
-    client.publish = promisify(client.publish)
-    client.end = promisify(client.end)
-
-    client.once('connect', function () {
-      resolve(client)
-    })
-
-    client.once('error', function (err) {
-      reject(err)
-    })
-  })
+  return mqtt.connectAsync(protos[proto], options)
 }
 
 function startBroker (args) {
@@ -68,13 +52,21 @@ function startBroker (args) {
   })
 }
 
-function receiveMessage (receiver) {
+// makes the test t fail if an error is thrown
+function noError (t, err) {
+  if (err) { t.threw(err) }
+}
+
+function receiveMessage (receiver, t, shouldNotReceive) {
   return new Promise((resolve, reject) => {
-    var timeout = setTimeout(reject.bind(Error('Timeout')), 500)
     receiver.once('message', function (topic, message) {
-      clearTimeout(timeout)
       resolve({ topic, message })
     })
+
+    if (shouldNotReceive) {
+      receiver._client.subscribe('on/done', noError.bind(this, t))
+      receiver._client.publish('on/done', 'done', { qos: 1 }, noError.bind(this, t))
+    }
   })
 }
 
@@ -99,5 +91,6 @@ module.exports = {
   startBroker: startBroker,
   closeBroker: closeBroker,
   receiveMessage: receiveMessage,
+  noError: noError,
   delay: promisify(setTimeout)
 }

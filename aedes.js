@@ -10,11 +10,13 @@ const cluster = require('cluster')
 
 const env = require('./env')
 const DB = env[process.env.DB] || env.default
+const noCluster = process.env.NO_CLUSTERS === 'true'
+
 const persistence = require(DB.persistence.name)
 const mqemitter = require(DB.mqemitter.name)
 
 const servers = []
-const isMasterCluster = cluster.isMaster && DB.clusters
+const isMasterCluster = cluster.isMaster && DB.clusters && !noCluster
 
 process.send = process.send || function () { } // for testing
 
@@ -72,7 +74,7 @@ function close (server) {
   })
 }
 
-function init () {
+async function init (cb) {
   var broker = aedes({
     persistence: persistence(DB.persistence.options),
     mq: mqemitter(DB.mqemitter.options),
@@ -80,7 +82,25 @@ function init () {
     heartbeatInterval: 500
   })
 
-  createServers(broker.handle)
+  if (DB.waitForReady) {
+    await cleanPersistence(broker)
+  }
+
+  await createServers(broker.handle)
+}
+
+function cleanPersistence (broker) {
+  return new Promise((resolve, reject) => {
+    broker.persistence.once('ready', function () {
+      DB.cleanDb(broker.persistence, function (err) {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  })
 }
 
 async function createServers (aedesHandler) {
@@ -158,4 +178,9 @@ if (isMasterCluster) {
   })
 } else {
   init()
+    .catch(error => {
+      console.log('Unable to start Aedes Broker')
+      console.error(error)
+      process.exit(1)
+    })
 }

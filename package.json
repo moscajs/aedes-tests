@@ -8,7 +8,9 @@
     "lint:standard": "standard --verbose | snazzy",
     "test": "npm run lint:standard && npm run unit",
     "test-redis": "DB=redis npm run test",
-    "test-mongo": "DB=mongo npm run test"
+    "test-mongo": "DB=mongo npm run test",
+    "test-redis-nc": "NO_CLUSTERS=true DB=redis npm run test",
+    "test-mongo-nc": "NO_CLUSTERS=true DB=mongo npm run test"
   },
   "repository": {
     "type": "git",
@@ -50,14 +52,16 @@
   },
   "homepage": "https://github.com/moscajs/aedes-tests#readme",
   "devDependencies": {
-    "aedes": "^0.40.1",
+    "aedes": "^0.41.0",
     "aedes-persistence": "^8.1.1",
-    "aedes-persistence-mongodb": "^8.0.0",
+    "aedes-persistence-mongodb": "^8.0.1",
     "aedes-persistence-redis": "^7.0.0",
-    "mqemitter": "^4.1.2",
+    "async-mqtt": "^2.5.0",
+    "mongo-clean": "^2.0.0",
+    "mqemitter": "^4.1.3",
     "mqemitter-mongodb": "^7.0.0",
-    "mqemitter-redis": "^4.0.1",
-    "mqtt": "^3.0.0",
+    "mqemitter-redis": "^4.0.2",
+    "p-map": "^4.0.0",
     "snazzy": "^8.0.0",
     "standard": "^14.3.3",
     "tap": "^14.10.7",
