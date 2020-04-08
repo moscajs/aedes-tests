@@ -74,7 +74,7 @@ function close (server) {
   })
 }
 
-function init (cb) {
+async function init (cb) {
   var broker = aedes({
     persistence: persistence(DB.persistence.options),
     mq: mqemitter(DB.mqemitter.options),
@@ -83,18 +83,24 @@ function init (cb) {
   })
 
   if (DB.waitForReady) {
+    await cleanPersistence(broker)
+  }
+
+  await createServers(broker.handle)
+}
+
+function cleanPersistence (broker) {
+  return new Promise((resolve, reject) => {
     broker.persistence.once('ready', function () {
       DB.cleanDb(broker.persistence, function (err) {
         if (err) {
-          cb(err)
+          reject(err)
         } else {
-          createServers(broker.handle).then(cb).catch(cb)
+          resolve()
         }
       })
     })
-  } else {
-    createServers(broker.handle).then(cb).catch(cb)
-  }
+  })
 }
 
 async function createServers (aedesHandler) {
@@ -171,10 +177,10 @@ if (isMasterCluster) {
     }
   })
 } else {
-  init(function (err) {
-    if (err) {
-      console.error(err)
+  init()
+    .catch(error => {
+      console.log('Unable to start Aedes Broker')
+      console.error(error)
       process.exit(1)
-    }
-  })
+    })
 }
