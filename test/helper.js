@@ -52,8 +52,9 @@ function startBroker (args) {
   })
 }
 
-function onError (err) {
-  if (err) { this.threw(err) }
+// makes the test t fail if an error is thrown
+function noError (t, err) {
+  if (err) { t.threw(err) }
 }
 
 function receiveMessage (receiver, t, shouldNotReceive) {
@@ -63,8 +64,8 @@ function receiveMessage (receiver, t, shouldNotReceive) {
     })
 
     if (shouldNotReceive) {
-      receiver._client.subscribe('on/done', onError.bind(t))
-      receiver._client.publish('on/done', 'done', { qos: 1 }, onError.bind(t))
+      receiver._client.subscribe('on/done', noError.bind(this, t))
+      receiver._client.publish('on/done', 'done', { qos: 1 }, noError.bind(this, t))
     }
   })
 }
@@ -90,6 +91,6 @@ module.exports = {
   startBroker: startBroker,
   closeBroker: closeBroker,
   receiveMessage: receiveMessage,
-  onError: onError,
+  noError: noError,
   delay: promisify(setTimeout)
 }

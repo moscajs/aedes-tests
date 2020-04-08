@@ -54,7 +54,7 @@ async function testQos (t, qos) {
 
   var publisher = await helper.startClient()
 
-  publisher._client.publish(msg.topic, msg.payload, msg, helper.onError.bind(t))
+  publisher._client.publish(msg.topic, msg.payload, msg, helper.noError.bind(this, t))
 
   var messages = await pMap(subscribers, s => helper.receiveMessage(s, t), pMapOptions)
 
@@ -90,7 +90,7 @@ test('Connect clean=false', async function (t) {
 
   publisher = await helper.startClient('mqtt', options)
 
-  publisher._client.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.onError.bind(t))
+  publisher._client.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
 
   var message = await helper.receiveMessage(publisher, t)
 
@@ -210,7 +210,7 @@ test('Wildecard subscriptions', async function (t) {
       await subscriber.subscribe(sub, options)
       const passMessage = 'Publish to ' + pub + (result ? '' : ' NOT') + ' received by subscriber ' + sub
 
-      publisher._client.publish(pub, 'Test wildecards', options, helper.onError.bind(t))
+      publisher._client.publish(pub, 'Test wildecards', options, helper.noError.bind(this, t))
 
       try {
         var message = await helper.receiveMessage(subscriber, t, !result)
