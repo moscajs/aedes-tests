@@ -29,7 +29,10 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
 })
 
 async function testQos (t, qos) {
-  t.plan(10, 'each client should receive a message')
+  t.setTimeout(3000)
+
+  var total = 10
+  t.plan(total, 'each client should receive a message')
   t.tearDown(helper.closeBroker)
 
   await helper.startBroker()
@@ -43,7 +46,7 @@ async function testQos (t, qos) {
 
   var subscribers = []
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < total; i++) {
     subscribers.push(helper.startClient())
   }
 
@@ -53,25 +56,32 @@ async function testQos (t, qos) {
   await pMap(subscribers, s => s.subscribe(msg.topic), pMapOptions)
 
   var publisher = await helper.startClient()
+  var received = 0
 
-  publisher._client.publish(msg.topic, msg.payload, msg, helper.noError.bind(this, t))
-
-  var messages = await pMap(subscribers, s => helper.receiveMessage(s, t), pMapOptions)
-
-  for (const m of messages) {
-    t.equal(m.topic, msg.topic, 'Message received')
+  function onMessage (topic) {
+    t.equal(topic, msg.topic, 'Message received')
+    if (++received === 10) {
+      pMap(subscribers, c => c.end(), pMapOptions)
+        .then(() => publisher.end())
+        .catch(err => t.error(err))
+    }
   }
 
-  await pMap(subscribers, c => c.end(), pMapOptions)
-  await publisher.end()
+  for (const sub of subscribers) {
+    sub.on('message', onMessage)
+  }
+
+  await publisher.publish(msg.topic, msg.payload, msg)
 }
 
-test('Subscribed clients receive updates - QoS 1', async function (t) {
-  await testQos(t, 1)
+test('Subscribed clients receive updates - QoS 1', function (t) {
+  testQos(t, 1)
+    .catch(err => t.error(err))
 })
 
-test('Subscribed clients receive updates - QoS 2', async function (t) {
-  await testQos(t, 2)
+test('Subscribed clients receive updates - QoS 2', function (t) {
+  testQos(t, 2)
+    .catch(err => t.error(err))
 })
 
 test('Connect clean=false', async function (t) {

@@ -7,6 +7,7 @@ const net = require('net')
 const aedes = require('aedes')
 const { readFileSync } = require('fs')
 const cluster = require('cluster')
+const pMap = require('p-map')
 
 const env = require('./env')
 const DB = env[process.env.DB] || env.default
@@ -76,10 +77,25 @@ function close (server) {
 
 async function init (cb) {
   var broker = aedes({
+    id: 'BROKER_' + (cluster.isMaster ? 1 : cluster.worker.id),
     persistence: persistence(DB.persistence.options),
     mq: mqemitter(DB.mqemitter.options),
     concurrency: 1000,
     heartbeatInterval: 500
+  })
+
+  // fired when a client connects
+  broker.on('client', function (client) {
+    // var cId = client ? client.id : null
+    // console.log(broker.id + ': Client Connected: \x1b[33m' + cId + '\x1b[0m to broker')
+  })
+
+  broker.on('subscribe', function (subscriptions, client) {
+    // console.log(broker.id + ': MQTT client \x1b[32m' + (client ? client.id : client) + '\x1b[0m subscribed to topics: ' + subscriptions.map(s => s.topic).join('\n'))
+  })
+
+  broker.on('publish', async function (packet, client) {
+    // console.log(broker.id + ': Client \x1b[31m' + (client ? client.id : 'BROKER_' + broker.id) + '\x1b[0m has published', packet.payload.toString(), 'on', packet.topic)
   })
 
   if (DB.waitForReady) {
@@ -124,7 +140,7 @@ async function createServers (aedesHandler) {
     }
   }
 
-  await Promise.all(servers.map((s, i) => listen(s, protos[i])))
+  await pMap(servers, (s, i) => listen(s, protos[i]), { concurrency: 1 })
 
   process.send({ state: 'ready' })
 }
@@ -136,7 +152,7 @@ process.on('SIGTERM', async function () {
     }
   } else {
     destroySockets()
-    await Promise.all(servers.map(s => close(s)))
+    await pMap(servers, s => close(s), { concurrency: 1 })
     if (cluster.isWorker) {
       cluster.worker.kill()
     } else {
