@@ -84,20 +84,6 @@ async function init (cb) {
     heartbeatInterval: 500
   })
 
-  // fired when a client connects
-  broker.on('client', function (client) {
-    // var cId = client ? client.id : null
-    // console.log(broker.id + ': Client Connected: \x1b[33m' + cId + '\x1b[0m to broker')
-  })
-
-  broker.on('subscribe', function (subscriptions, client) {
-    // console.log(broker.id + ': MQTT client \x1b[32m' + (client ? client.id : client) + '\x1b[0m subscribed to topics: ' + subscriptions.map(s => s.topic).join('\n'))
-  })
-
-  broker.on('publish', async function (packet, client) {
-    // console.log(broker.id + ': Client \x1b[31m' + (client ? client.id : 'BROKER_' + broker.id) + '\x1b[0m has published', packet.payload.toString(), 'on', packet.topic)
-  })
-
   if (DB.waitForReady) {
     await cleanPersistence(broker)
   }
