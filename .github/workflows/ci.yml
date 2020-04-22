@@ -25,7 +25,6 @@ jobs:
         run: npm test
         env:
           DB: redis
-          NO_CLUSTERS: 'true'
   mongo:
     runs-on: ubuntu-18.04
     timeout-minutes: 20
@@ -50,4 +49,3 @@ jobs:
         run: npm test 
         env:
           DB: mongo
-          NO_CLUSTERS: 'true'
