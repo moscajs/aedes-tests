@@ -29,8 +29,6 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
 })
 
 async function testQos (t, qos) {
-  t.setTimeout(3000)
-
   var total = 10
   t.plan(total, 'each client should receive a message')
   t.tearDown(helper.closeBroker)
@@ -45,9 +43,10 @@ async function testQos (t, qos) {
   }
 
   var subscribers = []
+  var received = {}
 
   for (let i = 0; i < total; i++) {
-    subscribers.push(helper.startClient())
+    subscribers.push(helper.startClient(null, { clientId: 'subscriber_' + i }))
   }
 
   subscribers = await Promise.all(subscribers)
@@ -56,19 +55,24 @@ async function testQos (t, qos) {
   await pMap(subscribers, s => s.subscribe(msg.topic), pMapOptions)
 
   var publisher = await helper.startClient()
-  var received = 0
 
-  function onMessage (topic) {
-    t.equal(topic, msg.topic, 'Message received')
-    if (++received === 10) {
-      pMap(subscribers, c => c.end(), pMapOptions)
-        .then(() => publisher.end())
-        .catch(err => t.error(err))
+  function onMessage (client, topic) {
+    var clientId = client._client.options.clientId
+    if (received[clientId]) {
+      t.fail('Duplicated message received')
+    } else {
+      t.equal(topic, msg.topic, 'Message received from ' + clientId)
+      received[clientId] = true
+      if (Object.keys(received).length === 10) {
+        pMap(subscribers, c => c.end(), pMapOptions)
+          .then(() => publisher.end())
+          .catch(err => t.error(err))
+      }
     }
   }
 
   for (const sub of subscribers) {
-    sub.on('message', onMessage)
+    sub.on('message', onMessage.bind(this, sub))
   }
 
   await publisher.publish(msg.topic, msg.payload, msg)
