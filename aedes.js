@@ -84,6 +84,17 @@ async function init (cb) {
     heartbeatInterval: 500
   })
 
+  broker.authenticate = function (client, username, password, callback) {
+    var error = null
+    var success = true
+    if (username === 'user' && password.toString() === 'notallowed') {
+      error = new Error('Auth error')
+      error.returnCode = 4
+    }
+
+    callback(error, success)
+  }
+
   if (DB.waitForReady) {
     await cleanPersistence(broker)
   }
