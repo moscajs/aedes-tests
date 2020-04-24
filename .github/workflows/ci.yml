@@ -1,4 +1,10 @@
-on: [push, pull_request]
+name: ci
+
+on: 
+  push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   redis:

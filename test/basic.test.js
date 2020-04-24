@@ -212,6 +212,12 @@ test('Wildecard subscriptions', async function (t) {
   }
 
   var subscriptions = {
+    '#': {
+      a: true,
+      'a/b': true,
+      'a/b/c': true,
+      'b/a/c': true
+    },
     'a/#': {
       a: true,
       'a/b': true,
