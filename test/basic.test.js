@@ -201,64 +201,83 @@ test('Will message', async function (t) {
   await client2.end()
 })
 
-test('Wildecard subscriptions', async function (t) {
+test('Wildecard subscriptions', function (t) {
   t.tearDown(helper.closeBroker)
 
-  await helper.startBroker()
+  async function test () {
+    await helper.startBroker()
 
-  const options = {
-    qos: 1,
-    retain: false
-  }
-
-  var subscriptions = {
-    '#': {
-      a: true,
-      'a/b': true,
-      'a/b/c': true,
-      'b/a/c': true
-    },
-    'a/#': {
-      a: true,
-      'a/b': true,
-      'a/b/c': true,
-      'b/a/c': false
-    },
-    'a/+/+': {
-      'a/b/c': true,
-      'a/a/c': true,
-      'a//': true,
-      'a/b/c/d': false,
-      'b/c/d': false
+    const options = {
+      qos: 1,
+      retain: false
     }
-  }
 
-  var plan = 0
-  for (const sub in subscriptions) {
-    plan += Object.keys(subscriptions[sub]).length
-  }
-
-  t.plan(plan)
-
-  for (const sub in subscriptions) {
-    for (const pub in subscriptions[sub]) {
-      const result = subscriptions[sub][pub]
-      var publisher = await helper.startClient()
-      var subscriber = await helper.startClient()
-      await subscriber.subscribe(sub, options)
-      const passMessage = 'Publish to ' + pub + (result ? '' : ' NOT') + ' received by subscriber ' + sub
-
-      publisher._client.publish(pub, 'Test wildecards', options, helper.noError.bind(this, t))
-
-      try {
-        var message = await helper.receiveMessage(subscriber, t, !result)
-        t.equal((result && message.topic === pub) || !result, true, passMessage)
-      } catch (error) {
-        t.threw(error)
+    var subscriptions = {
+      '#': {
+        a: true,
+        'a/b': true,
+        'a/b/c': true,
+        'b/a/c': true
+      },
+      'a/#': {
+        a: true,
+        'a/b': true,
+        'a/b/c': true,
+        'b/a/c': false
+      },
+      'a/+/+': {
+        'a/b/c': true,
+        'a/a/c': true,
+        'a//': true,
+        'a/b/c/d': false,
+        'b/c/d': false
       }
+    }
 
-      await publisher.end()
-      await subscriber.end()
+    var plan = 0
+    for (const sub in subscriptions) {
+      plan += Object.keys(subscriptions[sub]).length
+    }
+
+    t.plan(plan)
+
+    function onMessage (topic) {
+      const ctx = this
+      const passMessage = 'Publish to ' + ctx.pub + (ctx.result ? '' : ' NOT') + ' received by subscriber ' + ctx.sub
+      if ((ctx.result && topic === ctx.pub) || (!ctx.result && topic === 'on/done')) {
+        t.pass(passMessage)
+      } else {
+        t.fail(passMessage)
+      }
+      ctx.publisher.end()
+        .then(() => ctx.subscriber.end())
+        .finally(ctx.resolve)
+    }
+
+    function testPubSub (pub, sub, result, publisher, subscriber) {
+      return new Promise((resolve, reject) => {
+        subscriber.on('message', onMessage.bind({ pub, sub, result, publisher, subscriber, resolve }))
+        publisher._client.publish(pub, 'Test wildecards', options, helper.noError.bind(this, t))
+        if (!result) {
+          publisher._client.publish('on/done', 'Test wildecards', options, helper.noError.bind(this, t))
+        }
+      })
+    }
+
+    for (const sub in subscriptions) {
+      for (const pub in subscriptions[sub]) {
+        var publisher = await helper.startClient()
+        var subscriber = await helper.startClient()
+        var result = subscriptions[sub][pub]
+
+        await subscriber.subscribe(sub, options)
+        if (!result) {
+          await subscriber.subscribe('on/done')
+        }
+        await testPubSub(pub, sub, result, publisher, subscriber)
+      }
     }
   }
+
+  test().catch(t.error.bind(t))
 })
