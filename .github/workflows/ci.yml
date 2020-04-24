@@ -27,7 +27,7 @@ jobs:
           node-version: ${{ matrix.node }}    
       - name: Install Deps
         run: npm install
-      - name: Run tests
+      - name: Run tests on REDIS
         run: npm test
         env:
           DB: redis
@@ -51,7 +51,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Install Deps
         run: npm install
-      - name: Run tests
+      - name: Run tests on MONGO
         run: npm test 
         env:
           DB: mongo
