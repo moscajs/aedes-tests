@@ -3,6 +3,7 @@
 const helper = require('./helper.js')
 const { test } = require('tap')
 const pMap = require('p-map')
+const { once } = require('events')
 
 const pMapOptions = {
   concurrency: 4
@@ -28,20 +29,15 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
   await pMap(clients, c => c.end(), pMapOptions)
 })
 
-test('Unhautorized client', function (t) {
+test('Unhautorized client', async function (t) {
   t.tearDown(helper.closeBroker)
   t.plan(1)
 
-  const noError = t.error.bind(t)
-
-  helper.startBroker()
-    .then(() => {
-      var client = helper.startClient('mqtt', { username: 'user', password: 'notallowed' }, true)
-      client.once('error', function (err) {
-        t.equal(err.code, 4, 'Connection should be rejected with code 4')
-        client.end().catch(noError)
-      })
-    }).catch(noError)
+  await helper.startBroker()
+  var client = helper.startClient('mqtt', { username: 'user', password: 'notallowed' }, true)._client
+  var [err] = await once(client, 'error')
+  t.equal(err.code, 4, 'Connection should be rejected with code 4')
+  client.end()
 })
 
 async function testQos (t, qos) {
