@@ -82,7 +82,7 @@ async function testQos (t, qos) {
       if (Object.keys(received).length === 10) {
         pMap(subscribers, c => c.end(), pMapOptions)
           .then(() => publisher.end())
-          .catch(err => t.error(err))
+          .catch(t.error.bind(t))
       }
     }
   }
@@ -96,37 +96,40 @@ async function testQos (t, qos) {
 
 test('Subscribed clients receive updates - QoS 1', function (t) {
   testQos(t, 1)
-    .catch(err => t.error(err))
+    .catch(t.error.bind(t))
 })
 
 test('Subscribed clients receive updates - QoS 2', function (t) {
   testQos(t, 2)
-    .catch(err => t.error(err))
+    .catch(t.error.bind(t))
 })
 
-test('Connect clean=false', async function (t) {
+test('Connect clean=false', function (t) {
   t.plan(1)
   t.tearDown(helper.closeBroker)
 
-  const options = { clientId: 'pippo', clean: false }
+  async function doTest () {
+    const options = { clientId: 'pippo', clean: false }
 
-  await helper.startBroker()
+    await helper.startBroker()
 
-  var publisher = await helper.startClient('mqtt', options)
+    var publisher = await helper.startClient('mqtt', options)
 
-  await publisher.subscribe('my/topic')
+    await publisher.subscribe('my/topic')
 
-  await publisher.end(true)
+    await publisher.end(true)
 
-  publisher = await helper.startClient('mqtt', options)
+    publisher = await helper.startClient('mqtt', options)
 
-  publisher._client.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
+    publisher.on('message', function (topic) {
+      t.equal(topic, 'my/topic', 'Subscription has been restored')
+      publisher.end().catch(t.error.bind(t))
+    })
 
-  var message = await helper.receiveMessage(publisher, t)
+    await publisher.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
+  }
 
-  t.equal(message.topic, 'my/topic', 'Subscription has been restored')
-
-  await publisher.end()
+  doTest().catch(t.error.bind(t))
 })
 
 test('Client receives retained messages on connect', async function (t) {
