@@ -31,14 +31,14 @@ const args = process.argv.filter(arg => ports[arg])
 
 const sockets = new Set()
 
-function addSocket (socket) {
+function addSocket(socket) {
   sockets.add(socket)
   socket.on('close', () => {
     sockets.delete(socket)
   })
 }
 
-function destroySockets () {
+function destroySockets() {
   for (const s of sockets.values()) {
     s.destroy()
   }
@@ -50,7 +50,7 @@ const options = {
   rejectUnauthorized: false
 }
 
-function listen (server, proto) {
+function listen(server, proto) {
   return new Promise((resolve, reject) => {
     server.on('connection', addSocket)
     server.listen(ports[proto], (err) => {
@@ -62,7 +62,7 @@ function listen (server, proto) {
   })
 }
 
-function close (server) {
+function close(server) {
   return new Promise((resolve, reject) => {
     if (server.listening) {
       server.close(function (err) {
@@ -75,7 +75,7 @@ function close (server) {
   })
 }
 
-async function init (cb) {
+async function init(cb) {
   var broker = aedes({
     id: 'BROKER_' + (cluster.isMaster ? 1 : cluster.worker.id),
     persistence: persistence(DB.persistence.options),
@@ -102,7 +102,7 @@ async function init (cb) {
   await createServers(broker.handle)
 }
 
-function cleanPersistence (broker) {
+function cleanPersistence(broker) {
   return new Promise((resolve, reject) => {
     broker.persistence.once('ready', function () {
       DB.cleanDb(broker.persistence, function (err) {
@@ -116,7 +116,7 @@ function cleanPersistence (broker) {
   })
 }
 
-async function createServers (aedesHandler) {
+async function createServers(aedesHandler) {
   var protos = args && args.length > 0 ? args : ['TLS', 'WS', 'TCP']
 
   for (let i = 0; i < protos.length; i++) {
@@ -186,7 +186,11 @@ if (isMasterCluster) {
 
   cluster.on('exit', function (worker, code, signal) {
     if (Object.keys(cluster.workers).length === 0) {
-      process.send({ state: 'killed' })
+      try {
+        process.send({ state: 'killed' })
+      } catch (error) {
+        console.log(error.message)
+      }
     }
   })
 } else {
