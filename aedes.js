@@ -29,21 +29,6 @@ const ports = {
 
 const args = process.argv.filter(arg => ports[arg])
 
-const sockets = new Set()
-
-function addSocket (socket) {
-  sockets.add(socket)
-  socket.on('close', () => {
-    sockets.delete(socket)
-  })
-}
-
-function destroySockets () {
-  for (const s of sockets.values()) {
-    s.destroy()
-  }
-}
-
 const options = {
   key: readFileSync('./server.key'),
   cert: readFileSync('./server.cert'),
@@ -52,7 +37,6 @@ const options = {
 
 function listen (server, proto) {
   return new Promise((resolve, reject) => {
-    server.on('connection', addSocket)
     server.listen(ports[proto], (err) => {
       if (err) reject(err)
       else {
@@ -75,7 +59,7 @@ function close (server) {
   })
 }
 
-async function init (cb) {
+async function init () {
   var broker = aedes({
     id: 'BROKER_' + (cluster.isMaster ? 1 : cluster.worker.id),
     persistence: persistence(DB.persistence.options),
@@ -142,20 +126,26 @@ async function createServers (aedesHandler) {
   process.send({ state: 'ready' })
 }
 
-process.on('SIGTERM', async function () {
-  if (isMasterCluster) {
-    for (const id in cluster.workers) {
-      cluster.workers[id].kill('SIGTERM')
-    }
-  } else {
-    destroySockets()
-    await pMap(servers, s => close(s), { concurrency: 1 })
+process.on('SIGTERM', function () {
+  function onClose () {
     if (cluster.isWorker) {
       cluster.worker.kill()
     } else {
       process.send({ state: 'killed' })
       process.exit(0)
     }
+  }
+
+  if (isMasterCluster) {
+    for (const id in cluster.workers) {
+      cluster.workers[id].kill('SIGTERM')
+    }
+  } else {
+    pMap(servers, s => close(s), { concurrency: 1 })
+      .then(() => onClose()).catch((err) => {
+        console.error(err)
+        onClose()
+      })
   }
 })
 
