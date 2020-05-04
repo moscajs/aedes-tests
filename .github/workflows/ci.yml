@@ -1,4 +1,10 @@
-on: [push, pull_request]
+name: ci
+
+on: 
+  push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   redis:
@@ -21,11 +27,10 @@ jobs:
           node-version: ${{ matrix.node }}    
       - name: Install Deps
         run: npm install
-      - name: Run tests
+      - name: Run tests on REDIS
         run: npm test
         env:
           DB: redis
-          NO_CLUSTERS: 'true'
   mongo:
     runs-on: ubuntu-18.04
     timeout-minutes: 20
@@ -46,8 +51,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Install Deps
         run: npm install
-      - name: Run tests
+      - name: Run tests on MONGO
         run: npm test 
         env:
           DB: mongo
-          NO_CLUSTERS: 'true'

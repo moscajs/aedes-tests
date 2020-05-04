@@ -19,7 +19,7 @@ const protos = {
   mqtt: 'mqtt://localhost:1883'
 }
 
-async function startClient (proto, options) {
+function startClient (proto, options, noAsync) {
   if (!proto) proto = 'mqtt'
 
   if (!protos[proto]) {
@@ -32,7 +32,7 @@ async function startClient (proto, options) {
     Object.assign(options, credentials)
   }
 
-  return mqtt.connectAsync(protos[proto], options)
+  return mqtt[noAsync ? 'connect' : 'connectAsync'](protos[proto], options)
 }
 
 function startBroker (args) {

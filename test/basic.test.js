@@ -3,6 +3,7 @@
 const helper = require('./helper.js')
 const { test } = require('tap')
 const pMap = require('p-map')
+const { once } = require('events')
 
 const pMapOptions = {
   concurrency: 4
@@ -28,8 +29,20 @@ test('Connect-Subscribe-Publish-Disconnect 300 clients using WS and MQTT/MQTTS p
   await pMap(clients, c => c.end(), pMapOptions)
 })
 
+test('Unhautorized client', async function (t) {
+  t.tearDown(helper.closeBroker)
+  t.plan(1)
+
+  await helper.startBroker()
+  var client = helper.startClient('mqtt', { username: 'user', password: 'notallowed' }, true)._client
+  var [err] = await once(client, 'error')
+  t.equal(err.code, 4, 'Connection should be rejected with code 4')
+  client.end()
+})
+
 async function testQos (t, qos) {
-  t.plan(10, 'each client should receive a message')
+  var total = 10
+  t.plan(total, 'each client should receive a message')
   t.tearDown(helper.closeBroker)
 
   await helper.startBroker()
@@ -42,9 +55,10 @@ async function testQos (t, qos) {
   }
 
   var subscribers = []
+  var received = {}
 
-  for (let i = 0; i < 10; i++) {
-    subscribers.push(helper.startClient())
+  for (let i = 0; i < total; i++) {
+    subscribers.push(helper.startClient(null, { clientId: 'subscriber_' + i }))
   }
 
   subscribers = await Promise.all(subscribers)
@@ -54,49 +68,64 @@ async function testQos (t, qos) {
 
   var publisher = await helper.startClient()
 
-  publisher._client.publish(msg.topic, msg.payload, msg, helper.noError.bind(this, t))
-
-  var messages = await pMap(subscribers, s => helper.receiveMessage(s, t), pMapOptions)
-
-  for (const m of messages) {
-    t.equal(m.topic, msg.topic, 'Message received')
+  function onMessage (client, topic) {
+    var clientId = client._client.options.clientId
+    if (received[clientId]) {
+      t.fail('Duplicated message received')
+    } else {
+      t.equal(topic, msg.topic, 'Message received from ' + clientId)
+      received[clientId] = true
+      if (Object.keys(received).length === 10) {
+        pMap(subscribers, c => c.end(), pMapOptions)
+          .then(() => publisher.end())
+          .catch(t.error.bind(t))
+      }
+    }
   }
 
-  await pMap(subscribers, c => c.end(), pMapOptions)
-  await publisher.end()
+  for (const sub of subscribers) {
+    sub.on('message', onMessage.bind(this, sub))
+  }
+
+  await publisher.publish(msg.topic, msg.payload, msg)
 }
 
-test('Subscribed clients receive updates - QoS 1', async function (t) {
-  await testQos(t, 1)
+test('Subscribed clients receive updates - QoS 1', function (t) {
+  testQos(t, 1)
+    .catch(t.error.bind(t))
 })
 
-test('Subscribed clients receive updates - QoS 2', async function (t) {
-  await testQos(t, 2)
+test('Subscribed clients receive updates - QoS 2', function (t) {
+  testQos(t, 2)
+    .catch(t.error.bind(t))
 })
 
-test('Connect clean=false', async function (t) {
+test('Connect clean=false', function (t) {
   t.plan(1)
   t.tearDown(helper.closeBroker)
 
-  const options = { clientId: 'pippo', clean: false }
+  async function doTest () {
+    const options = { clientId: 'pippo', clean: false }
 
-  await helper.startBroker()
+    await helper.startBroker()
 
-  var publisher = await helper.startClient('mqtt', options)
+    var publisher = await helper.startClient('mqtt', options)
 
-  await publisher.subscribe('my/topic')
+    await publisher.subscribe('my/topic')
 
-  await publisher.end(true)
+    await publisher.end(true)
 
-  publisher = await helper.startClient('mqtt', options)
+    publisher = await helper.startClient('mqtt', options)
 
-  publisher._client.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
+    publisher.on('message', function (topic) {
+      t.equal(topic, 'my/topic', 'Subscription has been restored')
+      publisher.end().catch(t.error.bind(t))
+    })
 
-  var message = await helper.receiveMessage(publisher, t)
+    await publisher.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
+  }
 
-  t.equal(message.topic, 'my/topic', 'Subscription has been restored')
-
-  await publisher.end()
+  doTest().catch(t.error.bind(t))
 })
 
 test('Client receives retained messages on connect', async function (t) {
@@ -171,58 +200,83 @@ test('Will message', async function (t) {
   await client2.end()
 })
 
-test('Wildecard subscriptions', async function (t) {
+test('Wildecard subscriptions', function (t) {
   t.tearDown(helper.closeBroker)
 
-  await helper.startBroker()
+  async function test () {
+    await helper.startBroker()
 
-  const options = {
-    qos: 1,
-    retain: false
-  }
-
-  var subscriptions = {
-    'a/#': {
-      a: true,
-      'a/b': true,
-      'a/b/c': true,
-      'b/a/c': false
-    },
-    'a/+/+': {
-      'a/b/c': true,
-      'a/a/c': true,
-      'a//': true,
-      'a/b/c/d': false,
-      'b/c/d': false
+    const options = {
+      qos: 1,
+      retain: false
     }
-  }
 
-  var plan = 0
-  for (const sub in subscriptions) {
-    plan += Object.keys(subscriptions[sub]).length
-  }
-
-  t.plan(plan)
-
-  for (const sub in subscriptions) {
-    for (const pub in subscriptions[sub]) {
-      const result = subscriptions[sub][pub]
-      var publisher = await helper.startClient()
-      var subscriber = await helper.startClient()
-      await subscriber.subscribe(sub, options)
-      const passMessage = 'Publish to ' + pub + (result ? '' : ' NOT') + ' received by subscriber ' + sub
-
-      publisher._client.publish(pub, 'Test wildecards', options, helper.noError.bind(this, t))
-
-      try {
-        var message = await helper.receiveMessage(subscriber, t, !result)
-        t.equal((result && message.topic === pub) || !result, true, passMessage)
-      } catch (error) {
-        t.threw(error)
+    var subscriptions = {
+      '#': {
+        a: true,
+        'a/b': true,
+        'a/b/c': true,
+        'b/a/c': true
+      },
+      'a/#': {
+        a: true,
+        'a/b': true,
+        'a/b/c': true,
+        'b/a/c': false
+      },
+      'a/+/+': {
+        'a/b/c': true,
+        'a/a/c': true,
+        'a//': true,
+        'a/b/c/d': false,
+        'b/c/d': false
       }
+    }
 
-      await publisher.end()
-      await subscriber.end()
+    var plan = 0
+    for (const sub in subscriptions) {
+      plan += Object.keys(subscriptions[sub]).length
+    }
+
+    t.plan(plan)
+
+    function onMessage (topic) {
+      const ctx = this
+      const passMessage = 'Publish to ' + ctx.pub + (ctx.result ? '' : ' NOT') + ' received by subscriber ' + ctx.sub
+      if ((ctx.result && topic === ctx.pub) || (!ctx.result && topic === 'on/done')) {
+        t.pass(passMessage)
+      } else {
+        t.fail(passMessage)
+      }
+      ctx.publisher.end()
+        .then(() => ctx.subscriber.end())
+        .finally(ctx.resolve)
+    }
+
+    function testPubSub (pub, sub, result, publisher, subscriber) {
+      return new Promise((resolve, reject) => {
+        subscriber.on('message', onMessage.bind({ pub, sub, result, publisher, subscriber, resolve }))
+        publisher._client.publish(pub, 'Test wildecards', options, helper.noError.bind(this, t))
+        if (!result) {
+          publisher._client.publish('on/done', 'Test wildecards', options, helper.noError.bind(this, t))
+        }
+      })
+    }
+
+    for (const sub in subscriptions) {
+      for (const pub in subscriptions[sub]) {
+        var publisher = await helper.startClient()
+        var subscriber = await helper.startClient()
+        var result = subscriptions[sub][pub]
+
+        await subscriber.subscribe(sub, options)
+        if (!result) {
+          await subscriber.subscribe('on/done')
+        }
+        await testPubSub(pub, sub, result, publisher, subscriber)
+      }
     }
   }
+
+  test().catch(t.error.bind(t))
 })
