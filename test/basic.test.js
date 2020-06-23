@@ -80,7 +80,6 @@ async function testQos (t, qos) {
   }
 
   var subscribers = []
-  var received = {}
 
   for (let i = 0; i < total; i++) {
     subscribers.push(helper.startClient(null, { clientId: 'subscriber_' + i }))
@@ -93,36 +92,29 @@ async function testQos (t, qos) {
 
   var publisher = await helper.startClient()
 
-  function onMessage (client, topic) {
-    var clientId = client._client.options.clientId
-    if (received[clientId]) {
-      t.fail('Duplicated message received')
-    } else {
-      t.equal(topic, msg.topic, 'Message received from ' + clientId)
-      received[clientId] = true
-      if (Object.keys(received).length === 10) {
-        pMap(subscribers, c => c.end(), pMapOptions)
-          .then(() => publisher.end())
-          .catch(t.error.bind(t))
-      }
-    }
+  var promises = subscribers.map(s => once(s, 'message'))
+
+  promises.push(publisher.publish(msg.topic, msg.payload, msg))
+
+  var messages = await Promise.all(promises)
+
+  // remove the result of publish
+  messages.pop()
+
+  for (const m of messages) {
+    t.equal(m[0], msg.topic, 'message received')
   }
 
-  for (const sub of subscribers) {
-    sub.on('message', onMessage.bind(this, sub))
-  }
-
-  await publisher.publish(msg.topic, msg.payload, msg)
+  await publisher.end()
+  await pMap(subscribers, s => s.end(), pMapOptions)
 }
 
-test('Subscribed clients receive updates - QoS 1', function (t) {
-  testQos(t, 1)
-    .catch(t.error.bind(t))
+test('Subscribed clients receive updates - QoS 1', async function (t) {
+  await testQos(t, 1)
 })
 
-test('Subscribed clients receive updates - QoS 2', function (t) {
-  testQos(t, 2)
-    .catch(t.error.bind(t))
+test('Subscribed clients receive updates - QoS 2', async function (t) {
+  await testQos(t, 2)
 })
 
 test('Connect clean=false', async function (t) {
