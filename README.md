@@ -1,6 +1,7 @@
 # Aedes Tests
 
-![.github/workflows/ci.yml](https://github.com/moscajs/aedes-tests/workflows/.github/workflows/ci.yml/badge.svg)
+![redisCI](https://github.com/moscajs/aedes-tests/workflows/redisCI/badge.svg)
+![mongoCI](https://github.com/moscajs/aedes-tests/workflows/mongoCI/badge.svg)
 
 Integration/Black Box tests for [Aedes](https://github.com/moscajs/aedes) MQTT Broker. `aedes.js` handles broker setup and runs in a separete process, based on args passed to the process it can init 3 different servers:
 
