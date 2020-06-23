@@ -211,9 +211,9 @@ test('Will message', async function (t) {
   // we use `_client` to access original mqtt client object as we are using `async-mqtt`
   client._client.stream.destroy()
 
-  var will = await helper.receiveMessage(client2, t)
+  var [topic] = await once(client2, 'message')
 
-  t.equal(will.topic, 'my/will', 'Will received')
+  t.equal(topic, 'my/will', 'Will received')
 
   await client.end()
   await client2.end()
