@@ -9,7 +9,6 @@ on:
 jobs:
   redis:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     strategy:
       matrix:
         node-version: [10.x, 12.x, 13.x]
@@ -28,6 +27,7 @@ jobs:
       - name: Install Deps
         run: npm install
       - name: Run tests on REDIS
+        timeout-minutes: 3
         run: npm test
         env:
           DB: redis
