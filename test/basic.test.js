@@ -40,6 +40,31 @@ test('Unhautorized client', async function (t) {
   client.end()
 })
 
+test('Unhautorized publish/subscribe', async function (t) {
+  t.plan(1)
+
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+  var publisher = await helper.startClient()
+  var subscriber = await helper.startClient()
+
+  await subscriber.subscribe('not/allowed/to/publish')
+
+  subscriber.on('message', function (topic, payload) {
+    t.fail('message received')
+  })
+
+  await publisher.publish('not/allowed/to/publish', 'test')
+
+  var [granted] = await subscriber.subscribe('not/allowed/to/subscribe')
+
+  t.equal(granted.qos, 128, 'subscription has been negated with granted qos 128')
+
+  await publisher.end()
+  await subscriber.end()
+})
+
 async function testQos (t, qos) {
   var total = 10
   t.plan(total, 'each client should receive a message')
@@ -100,32 +125,26 @@ test('Subscribed clients receive updates - QoS 2', function (t) {
     .catch(t.error.bind(t))
 })
 
-test('Connect clean=false', function (t) {
+test('Connect clean=false', async function (t) {
   t.plan(1)
   t.tearDown(helper.closeBroker)
 
-  async function doTest () {
-    const options = { clientId: 'pippo', clean: false }
+  const options = { clientId: 'pippo', clean: false }
 
-    await helper.startBroker()
+  await helper.startBroker()
 
-    var publisher = await helper.startClient('mqtt', options)
+  var publisher = await helper.startClient('mqtt', options)
 
-    await publisher.subscribe('my/topic')
+  await publisher.subscribe('my/topic')
 
-    await publisher.end(true)
+  await publisher.end(true)
 
-    publisher = await helper.startClient('mqtt', options)
+  publisher = await helper.startClient('mqtt', options)
 
-    publisher.on('message', function (topic) {
-      t.equal(topic, 'my/topic', 'Subscription has been restored')
-      publisher.end().catch(t.error.bind(t))
-    })
-
-    await publisher.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
-  }
-
-  doTest().catch(t.error.bind(t))
+  await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
+  var [topic] = await once(publisher, 'message')
+  t.equal(topic, 'my/topic', 'Subscription has been restored')
+  await publisher.end()
 })
 
 test('Client receives retained messages on connect', async function (t) {

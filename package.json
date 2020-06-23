@@ -52,20 +52,20 @@
   },
   "homepage": "https://github.com/moscajs/aedes-tests#readme",
   "devDependencies": {
-    "aedes": "^0.41.0",
+    "aedes": "^0.42.2",
     "aedes-persistence": "^8.1.1",
     "aedes-persistence-mongodb": "^8.0.1",
     "aedes-persistence-redis": "^7.0.0",
-    "async-mqtt": "^2.5.0",
+    "async-mqtt": "^2.6.0",
     "mongo-clean": "^2.0.0",
-    "mqemitter": "^4.1.3",
+    "mqemitter": "^4.2.0",
     "mqemitter-mongodb": "^7.0.2",
     "mqemitter-redis": "^4.0.3",
     "p-map": "^4.0.0",
     "snazzy": "^8.0.0",
-    "standard": "^14.3.3",
+    "standard": "^14.3.4",
     "tap": "^14.10.7",
-    "ws": "^7.2.3"
+    "ws": "^7.3.0"
   },
   "dependencies": {}
 }
