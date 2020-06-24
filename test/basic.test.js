@@ -40,6 +40,31 @@ test('Unhautorized client', async function (t) {
   client.end()
 })
 
+test('Unhautorized publish/subscribe', async function (t) {
+  t.plan(1)
+
+  t.tearDown(helper.closeBroker)
+
+  await helper.startBroker()
+  var publisher = await helper.startClient()
+  var subscriber = await helper.startClient()
+
+  await subscriber.subscribe('not/allowed/to/publish')
+
+  subscriber.on('message', function (topic, payload) {
+    t.fail('message received')
+  })
+
+  await publisher.publish('not/allowed/to/publish', 'test')
+
+  var [granted] = await subscriber.subscribe('not/allowed/to/subscribe')
+
+  t.equal(granted.qos, 128, 'subscription has been negated with granted qos 128')
+
+  await publisher.end()
+  await subscriber.end()
+})
+
 async function testQos (t, qos) {
   var total = 10
   t.plan(total, 'each client should receive a message')
@@ -55,7 +80,6 @@ async function testQos (t, qos) {
   }
 
   var subscribers = []
-  var received = {}
 
   for (let i = 0; i < total; i++) {
     subscribers.push(helper.startClient(null, { clientId: 'subscriber_' + i }))
@@ -68,64 +92,51 @@ async function testQos (t, qos) {
 
   var publisher = await helper.startClient()
 
-  function onMessage (client, topic) {
-    var clientId = client._client.options.clientId
-    if (received[clientId]) {
-      t.fail('Duplicated message received')
-    } else {
-      t.equal(topic, msg.topic, 'Message received from ' + clientId)
-      received[clientId] = true
-      if (Object.keys(received).length === 10) {
-        pMap(subscribers, c => c.end(), pMapOptions)
-          .then(() => publisher.end())
-          .catch(t.error.bind(t))
-      }
-    }
+  var promises = subscribers.map(s => once(s, 'message'))
+
+  promises.push(publisher.publish(msg.topic, msg.payload, msg))
+
+  var messages = await Promise.all(promises)
+
+  // remove the result of publish
+  messages.pop()
+
+  for (const m of messages) {
+    t.equal(m[0], msg.topic, 'message received')
   }
 
-  for (const sub of subscribers) {
-    sub.on('message', onMessage.bind(this, sub))
-  }
-
-  await publisher.publish(msg.topic, msg.payload, msg)
+  await publisher.end()
+  await pMap(subscribers, s => s.end(), pMapOptions)
 }
 
-test('Subscribed clients receive updates - QoS 1', function (t) {
-  testQos(t, 1)
-    .catch(t.error.bind(t))
+test('Subscribed clients receive updates - QoS 1', async function (t) {
+  await testQos(t, 1)
 })
 
-test('Subscribed clients receive updates - QoS 2', function (t) {
-  testQos(t, 2)
-    .catch(t.error.bind(t))
+test('Subscribed clients receive updates - QoS 2', async function (t) {
+  await testQos(t, 2)
 })
 
-test('Connect clean=false', function (t) {
+test('Connect clean=false', async function (t) {
   t.plan(1)
   t.tearDown(helper.closeBroker)
 
-  async function doTest () {
-    const options = { clientId: 'pippo', clean: false }
+  const options = { clientId: 'pippo', clean: false }
 
-    await helper.startBroker()
+  await helper.startBroker()
 
-    var publisher = await helper.startClient('mqtt', options)
+  var publisher = await helper.startClient('mqtt', options)
 
-    await publisher.subscribe('my/topic')
+  await publisher.subscribe('my/topic')
 
-    await publisher.end(true)
+  await publisher.end(true)
 
-    publisher = await helper.startClient('mqtt', options)
+  publisher = await helper.startClient('mqtt', options)
 
-    publisher.on('message', function (topic) {
-      t.equal(topic, 'my/topic', 'Subscription has been restored')
-      publisher.end().catch(t.error.bind(t))
-    })
-
-    await publisher.publish('my/topic', 'I\'m alive', { qos: 1 }, helper.noError.bind(this, t))
-  }
-
-  doTest().catch(t.error.bind(t))
+  await publisher.publish('my/topic', 'I\'m alive', { qos: 1 })
+  var [topic] = await once(publisher, 'message')
+  t.equal(topic, 'my/topic', 'Subscription has been restored')
+  await publisher.end()
 })
 
 test('Client receives retained messages on connect', async function (t) {
@@ -192,9 +203,9 @@ test('Will message', async function (t) {
   // we use `_client` to access original mqtt client object as we are using `async-mqtt`
   client._client.stream.destroy()
 
-  var will = await helper.receiveMessage(client2, t)
+  var [topic] = await once(client2, 'message')
 
-  t.equal(will.topic, 'my/will', 'Will received')
+  t.equal(topic, 'my/will', 'Will received')
 
   await client.end()
   await client2.end()

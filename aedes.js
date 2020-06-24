@@ -79,6 +79,22 @@ async function init () {
     callback(error, success)
   }
 
+  broker.authorizePublish = function (client, packet, callback) {
+    if (packet.topic === 'not/allowed/to/publish') {
+      callback(Error('topic not allowed'))
+    } else {
+      callback(null)
+    }
+  }
+
+  broker.authorizeSubscribe = function (client, sub, callback) {
+    if (sub.topic === 'not/allowed/to/subscribe') {
+      callback(null, null) // will negate sub and return granted qos 128
+    } else {
+      callback(null, sub)
+    }
+  }
+
   if (DB.waitForReady) {
     await cleanPersistence(broker)
   }

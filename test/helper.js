@@ -57,19 +57,6 @@ function noError (t, err) {
   if (err) { t.threw(err) }
 }
 
-function receiveMessage (receiver, t, shouldNotReceive) {
-  return new Promise((resolve, reject) => {
-    receiver.once('message', function (topic, message) {
-      resolve({ topic, message })
-    })
-
-    if (shouldNotReceive) {
-      receiver._client.subscribe('on/done', noError.bind(this, t))
-      receiver._client.publish('on/done', 'done', { qos: 1 }, noError.bind(this, t))
-    }
-  })
-}
-
 function closeBroker (cb) {
   return new Promise((resolve, reject) => {
     if (brokerProcess.killed) {
@@ -90,7 +77,6 @@ module.exports = {
   startClient: startClient,
   startBroker: startBroker,
   closeBroker: closeBroker,
-  receiveMessage: receiveMessage,
   noError: noError,
   delay: promisify(setTimeout)
 }
