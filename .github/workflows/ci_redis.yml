@@ -10,8 +10,8 @@ jobs:
   redis:
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
-        max-parallel: 1
         node-version: [10.x, 12.x, 14.x]
     services:
       redis:
