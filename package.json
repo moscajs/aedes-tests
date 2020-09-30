@@ -55,7 +55,7 @@
     "aedes": "^0.42.2",
     "aedes-persistence": "^8.1.1",
     "aedes-persistence-mongodb": "^8.0.1",
-    "aedes-persistence-redis": "^7.0.0",
+    "aedes-persistence-redis": "^8.0.0",
     "async-mqtt": "^2.6.0",
     "mongo-clean": "^2.0.0",
     "mqemitter": "^4.2.0",
